@@ -361,7 +361,7 @@ setup(
         'install_headers': InstallHeaders,
         'install': InstallCommand,} if not collaborator_build else {},
     # Supported Python versions
-    python_requires='>=3.7',
+    python_requires='>=3.6',
     # PyPI package information.
     classifiers=sorted([
         'Development Status :: 5 - Production/Stable',
