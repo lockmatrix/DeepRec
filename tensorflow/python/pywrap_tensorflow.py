@@ -15,6 +15,14 @@
 """A Python wrapper that loads _pywrap_tensorflow_internal.so."""
 
 import ctypes
+
+#优先加载包里内含的libstdc++.so.6
+try:
+    ctypes.CDLL('/home/pai/lib/python3.6/site-packages/tensorflow/python/libstdc++.so.6')
+except:
+    print('load /home/pai/lib/python3.6/site-packages/tensorflow/python/libstdc++.so.6 failed')
+    # 可能是在编译打包过程中调用的
+
 import sys
 import traceback
 

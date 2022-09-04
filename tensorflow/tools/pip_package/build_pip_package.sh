@@ -217,6 +217,13 @@ function prepare_src() {
   rm -f ${TMPDIR}/tensorflow/libtensorflow_framework.so
   rm -f ${TMPDIR}/tensorflow/libtensorflow_framework.so.[0-9].*
 
+  # 打包定制的libstdc++.so.6
+  if [ -f "/home/linuxbrew/.linuxbrew/lib/gcc/current/libstdc++.so.6" ]; then
+      echo "pack /home/linuxbrew/.linuxbrew/lib/gcc/current/libstdc++.so.6"
+      cp /home/linuxbrew/.linuxbrew/lib/gcc/current/libstdc++.so.6 ${TMPDIR}/tensorflow/python/
+      chmod +x ${TMPDIR}/tensorflow/python/libstdc++.so.6
+  fi
+
   # TODO(annarev): copy over API files from tensorflow/api/_vN to tensorflow/
   #   except tensorflow/api/_vN/lite/.
 
