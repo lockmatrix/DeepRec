@@ -26,7 +26,6 @@ xxd -i model_data.tflite > model_data.cc
 from absl import app
 from absl import flags
 
-from tensorflow.lite.tools import flatbuffer_utils
 
 FLAGS = flags.FLAGS
 
@@ -40,6 +39,7 @@ flags.mark_flag_as_required('output_tflite_file')
 
 
 def main(_):
+  from tensorflow.lite.tools import flatbuffer_utils
   model = flatbuffer_utils.xxd_output_to_object(FLAGS.input_cc_file)
   flatbuffer_utils.write_model(model, FLAGS.output_tflite_file)
 

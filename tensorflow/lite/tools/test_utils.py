@@ -17,7 +17,7 @@
 All functions that can be commonly used by various tests.
 """
 
-import flatbuffers
+
 from tensorflow.lite.python import schema_py_generated as schema_fb
 
 TFLITE_SCHEMA_VERSION = 3
@@ -25,6 +25,7 @@ TFLITE_SCHEMA_VERSION = 3
 
 def build_mock_flatbuffer_model():
   """Creates a flatbuffer containing an example model."""
+  import flatbuffers
   builder = flatbuffers.Builder(1024)
 
   schema_fb.BufferStart(builder)

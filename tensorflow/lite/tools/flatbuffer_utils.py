@@ -25,7 +25,7 @@ import copy
 import random
 import re
 
-import flatbuffers
+
 from tensorflow.lite.python import schema_py_generated as schema_fb
 from tensorflow.python.platform import gfile
 
@@ -80,6 +80,7 @@ def read_model_with_mutable_tensors(input_tflite_file):
 def convert_object_to_bytearray(model_object):
   """Converts a tflite model from an object to a immutable bytearray."""
   # Initial size of the buffer, which will grow automatically if needed
+  import flatbuffers
   builder = flatbuffers.Builder(1024)
   model_offset = model_object.Pack(builder)
   builder.Finish(model_offset, file_identifier=_TFLITE_FILE_IDENTIFIER)

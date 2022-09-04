@@ -28,7 +28,6 @@ from google.protobuf import text_format as _text_format
 from google.protobuf.message import DecodeError
 from tensorflow.core.framework import graph_pb2 as _graph_pb2
 from tensorflow.lite.experimental.microfrontend.python.ops import audio_microfrontend_op  # pylint: disable=unused-import
-from tensorflow.lite.python import conversion_metadata_schema_py_generated as conversion_metdata_fb
 from tensorflow.lite.python import lite_constants as constants
 from tensorflow.lite.python.convert import convert_graphdef as _convert_graphdef
 from tensorflow.lite.python.convert import convert_graphdef_with_arrays as _convert_graphdef_with_arrays
@@ -69,7 +68,6 @@ from tensorflow.lite.python.util import populate_conversion_metadata as _populat
 from tensorflow.lite.python.util import run_graph_optimizations as _run_graph_optimizations
 from tensorflow.lite.python.util import set_tensor_shapes as _set_tensor_shapes
 from tensorflow.lite.python.util import trace_model_call as _trace_model_call
-from tensorflow.lite.tools import flatbuffer_utils
 from tensorflow.lite.tools.optimize.debugging.python.debugger import QuantizationDebugger  # pylint: disable=unused-import
 from tensorflow.lite.tools.optimize.debugging.python.debugger import QuantizationDebugOptions  # pylint: disable=unused-import
 from tensorflow.python import saved_model as _saved_model
@@ -513,9 +511,12 @@ class TFLiteConverterBase:
 
   # Stores the original model type temporarily to transmit the information
   # from the factory class methods to TFLiteConverterBase init function.
-  _original_model_type = conversion_metdata_fb.ModelType.NONE
+
+  _original_model_type = 0
 
   def __init__(self):
+    from tensorflow.lite.python import conversion_metadata_schema_py_generated as conversion_metdata_fb
+
     self.optimizations = set()
     self.representative_dataset = None
     self.target_spec = TargetSpec()
@@ -746,14 +747,14 @@ class TFLiteConverterBase:
   @classmethod
   def _set_original_model_type(cls, model_type):
     """Stores the original model type."""
-    if model_type == conversion_metdata_fb.ModelType.NONE:
+    if model_type == 0:
       raise ValueError("The original model type should be specified.")
     cls._original_model_type = model_type
 
   def _get_original_model_type(self):
     """One-time getter to return original model type and set it to NONE."""
     model_type = TFLiteConverterBase._original_model_type
-    TFLiteConverterBase._original_model_type = conversion_metdata_fb.ModelType.NONE
+    TFLiteConverterBase._original_model_type = 0
     return model_type
 
   def _save_conversion_params_metric(self,
@@ -916,6 +917,8 @@ class TFLiteConverterBase:
     self._tflite_metrics.export_metrics()
     if self.exclude_conversion_metadata:
       return result
+
+    from tensorflow.lite.tools import flatbuffer_utils
     model_object = flatbuffer_utils.convert_bytearray_to_object(result)
     # Populates the conversion metadata.
     # TODO(b/202090541): Collects sparsity block size information.
@@ -1727,6 +1730,7 @@ class TFLiteConverterV2(TFLiteFrozenGraphConverterV2):
       Invalid input type.
     """
     # pylint: disable=protected-access
+    from tensorflow.lite.python import conversion_metadata_schema_py_generated as conversion_metdata_fb
     TFLiteConverterBase._set_original_model_type(
         conversion_metdata_fb.ModelType.TF_CONCRETE_FUNCTIONS)
     # pylint: enable=protected-access
@@ -1766,6 +1770,7 @@ class TFLiteConverterV2(TFLiteFrozenGraphConverterV2):
       Invalid signature keys.
     """
     # pylint: disable=protected-access
+    from tensorflow.lite.python import conversion_metadata_schema_py_generated as conversion_metdata_fb
     TFLiteConverterBase._set_original_model_type(
         conversion_metdata_fb.ModelType.TF_SAVED_MODEL)
     # pylint: enable=protected-access
@@ -2602,6 +2607,7 @@ class TFLiteConverter(TFLiteFrozenGraphConverter):
       TFLiteConverter class.
     """
     # pylint: disable=protected-access
+    from tensorflow.lite.python import conversion_metadata_schema_py_generated as conversion_metdata_fb
     TFLiteConverterBase._set_original_model_type(
         conversion_metdata_fb.ModelType.TF_SESSION)
     # pylint: enable=protected-access

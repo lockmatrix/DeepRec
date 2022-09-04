@@ -20,17 +20,14 @@ import sys
 
 from absl import logging
 
-import flatbuffers
+
 from tensorflow.core.protobuf import config_pb2 as _config_pb2
 from tensorflow.core.protobuf import graph_debug_info_pb2
 from tensorflow.core.protobuf import meta_graph_pb2 as _meta_graph_pb2
-from tensorflow.lite.python import conversion_metadata_schema_py_generated as conversion_metadata_fb
-from tensorflow.lite.python import schema_py_generated as schema_fb
 from tensorflow.lite.python import schema_util
 from tensorflow.lite.python import tflite_keras_util as _tflite_keras_util
 from tensorflow.lite.python.op_hint import convert_op_hints_to_stubs
 from tensorflow.lite.python.op_hint import find_all_hinted_output_nodes
-from tensorflow.lite.tools import flatbuffer_utils
 from tensorflow.python.eager import function
 from tensorflow.python.framework import convert_to_constants as _convert_to_constants
 from tensorflow.python.framework import dtypes
@@ -549,6 +546,7 @@ extern const int {array_name}_len;
 
 def _convert_model_from_bytearray_to_object(model_bytearray):
   """Converts a tflite model from a bytearray into a parsable object."""
+  from tensorflow.lite.python import schema_py_generated as schema_fb
   model_object = schema_fb.Model.GetRootAsModel(model_bytearray, 0)
   model_object = schema_fb.ModelT.InitFromObj(model_object)
   model_object = copy.deepcopy(model_object)
@@ -558,6 +556,7 @@ def _convert_model_from_bytearray_to_object(model_bytearray):
 def _convert_model_from_object_to_bytearray(model_object):
   """Converts a tflite model from a parsable object into a bytearray."""
   # Initial size of the buffer, which will grow automatically if needed
+  import flatbuffers
   builder = flatbuffers.Builder(1024)
   model_offset = model_object.Pack(builder)
   builder.Finish(model_offset, file_identifier=_TFLITE_FILE_IDENTIFIER)
@@ -566,6 +565,7 @@ def _convert_model_from_object_to_bytearray(model_object):
 
 def get_quantize_opcode_idx(model):
   """Returns the quantize op idx."""
+  from tensorflow.lite.python import schema_py_generated as schema_fb
   quant_opcode_idxs = []
   for idx, opcode in enumerate(model.operatorCodes):
     builtin_code = schema_util.get_builtin_code_from_operator_code(opcode)
@@ -576,6 +576,7 @@ def get_quantize_opcode_idx(model):
 
 def get_dequantize_opcode_idx(model):
   """Returns the quantize op idx."""
+  from tensorflow.lite.python import schema_py_generated as schema_fb
   quant_opcode_idxs = []
   for idx, opcode in enumerate(model.operatorCodes):
     builtin_code = schema_util.get_builtin_code_from_operator_code(opcode)
@@ -720,6 +721,7 @@ def _modify_model_input_type_per_subgraph(model, subgraph_index,
   # Modify model input type
   if inference_input_type == dtypes.uint8:
     # Change quant op (float to int8) to quant op (uint8 to int8)
+    from tensorflow.lite.python import schema_py_generated as schema_fb
     for op in input_quant_ops:
       int8_quantization = tensors[op.outputs[0]].quantization
       uint8_quantization = schema_fb.QuantizationParametersT()
@@ -828,6 +830,7 @@ def _modify_model_output_type_per_subgraph(model, subgraph_index,
   # Modify model output type
   if inference_output_type == dtypes.uint8:
     # Find a quantize operator
+    from tensorflow.lite.python import schema_py_generated as schema_fb
     quant_opcode_idx = -1
     for idx, opcode in enumerate(model.operatorCodes):
       builtin_code = schema_util.get_builtin_code_from_operator_code(opcode)
@@ -994,6 +997,8 @@ def get_sparsity_modes(model_object):
   if not model_object or not model_object.metadata:
     return []
 
+  from tensorflow.lite.python import conversion_metadata_schema_py_generated as conversion_metadata_fb
+
   result = set()
   for subgraph in model_object.subgraphs:
     for tensor in subgraph.tensors:
@@ -1022,6 +1027,8 @@ def populate_conversion_metadata(model_object, metadata):
   Returns:
     A tflite model object with embedded conversion metadata.
   """
+  import flatbuffers
+  from tensorflow.lite.python import schema_py_generated as schema_fb
   try:
     metadata_builder = flatbuffers.Builder(0)
     metadata_builder.Finish(metadata.Pack(metadata_builder))
@@ -1060,6 +1067,7 @@ def get_conversion_metadata(model_buffer):
   Returns:
     The conversion metadata or None if it is not populated.
   """
+  from tensorflow.lite.tools import flatbuffer_utils
   model_object = flatbuffer_utils.convert_bytearray_to_object(model_buffer)
   if not model_object or not model_object.metadata:
     return None

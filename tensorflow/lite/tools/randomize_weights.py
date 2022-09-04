@@ -17,7 +17,6 @@ r"""Randomize all weights in a tflite file."""
 from absl import app
 from absl import flags
 
-from tensorflow.lite.tools import flatbuffer_utils
 
 FLAGS = flags.FLAGS
 
@@ -35,6 +34,7 @@ flags.mark_flag_as_required('output_tflite_file')
 
 
 def main(_):
+  from tensorflow.lite.tools import flatbuffer_utils
   model = flatbuffer_utils.read_model(FLAGS.input_tflite_file)
   flatbuffer_utils.randomize_weights(model, FLAGS.random_seed,
                                      FLAGS.buffers_to_skip)

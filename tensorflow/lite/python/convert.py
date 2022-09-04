@@ -34,7 +34,6 @@ from tensorflow.lite.python.metrics.wrapper import metrics_wrapper as _metrics_w
 from tensorflow.lite.toco import model_flags_pb2 as _model_flags_pb2
 from tensorflow.lite.toco import toco_flags_pb2 as _conversion_flags_pb2
 from tensorflow.lite.toco import types_pb2 as _types_pb2
-from tensorflow.lite.tools import flatbuffer_utils
 from tensorflow.python.framework import dtypes
 from tensorflow.python.framework import tensor_shape
 from tensorflow.python.platform import resource_loader as _resource_loader
@@ -883,6 +882,7 @@ def deduplicate_readonly_buffers(tflite_model):
 
   """
   # Load TFLite Flatbuffer byte array into an object.
+  from tensorflow.lite.tools import flatbuffer_utils
   model = flatbuffer_utils.convert_bytearray_to_object(tflite_model)
 
   # Get all the read-only buffers, which can be modified without causing any
@@ -998,4 +998,5 @@ def deduplicate_readonly_buffers(tflite_model):
     model.buffers[idx].data = None
 
   # Return a TFLite flatbuffer as a byte array.
+  from tensorflow.lite.tools import flatbuffer_utils
   return flatbuffer_utils.convert_object_to_bytearray(model)
