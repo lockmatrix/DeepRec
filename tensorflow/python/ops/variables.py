@@ -180,6 +180,24 @@ def validate_synchronization_aggregation_trainable(synchronization, aggregation,
   return synchronization, aggregation, trainable
 
 
+@tf_export(v1=["EmbeddingVariableOption"])
+class EmbeddingVariableOption(object):
+  def __init__(self,
+               ht_type="",
+               ht_partition_num = 1000,
+               evict_option = None,
+               ckpt = None,
+               filter_option = None,
+               storage_option = None,
+               init_option = None):
+    self.ht_type = ht_type
+    self.ht_partition_num = ht_partition_num
+    self.evict = evict_option
+    self.ckpt = ckpt
+    self.filter_strategy = filter_option
+    self.storage_option = storage_option
+    self.init = init_option
+
 class VariableMetaclass(abc.ABCMeta):
   """Metaclass to allow construction of tf.Variable to be overridden."""
 
