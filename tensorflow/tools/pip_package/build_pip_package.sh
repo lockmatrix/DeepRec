@@ -224,6 +224,9 @@ function prepare_src() {
       chmod +x ${TMPDIR}/tensorflow/python/libstdc++.so.6
   fi
 
+  echo "pack keras 2.10"
+  cp -r keras ${TMPDIR}
+
   # TODO(annarev): copy over API files from tensorflow/api/_vN to tensorflow/
   #   except tensorflow/api/_vN/lite/.
 
