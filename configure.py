@@ -464,7 +464,7 @@ def set_cc_opt_flags(environ_cp):
     # maximum performance should compile TF in their environment and can pass
     # `-march=native` there.
     # See https://github.com/tensorflow/tensorflow/issues/45744 and duplicates
-    default_cc_opt_flags = '-Wno-sign-compare'
+    default_cc_opt_flags = '-march=native -O3 -Wno-sign-compare'
   question = ('Please specify optimization flags to use during compilation when'
               ' bazel option "--config=opt" is specified [Default is %s]: '
              ) % default_cc_opt_flags
