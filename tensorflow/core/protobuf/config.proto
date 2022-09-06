@@ -302,6 +302,11 @@ message OptimizerOptions {
   //  - this flag is true, or
   //  - TF_XLA_FLAGS contains --tf_xla_cpu_global_jit=true.
   bool cpu_global_jit = 7;
+
+  bool do_op_fusion = 8;
+  int32 micro_batch_num = 9;
+  bool do_smart_stage = 10;
+  bool do_smart_stage_gpu = 11;
 }
 
 message GraphOptions {
