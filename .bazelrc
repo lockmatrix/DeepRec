@@ -136,7 +136,7 @@ build --define=with_xla_support=true
 build --config=short_logs
 
 # TODO(mihaimaruseac): Document this option or remove if no longer needed
-build --config=v2
+build --config=v1
 
 # Disable AWS/HDFS support by default
 build --define=no_aws_support=true
