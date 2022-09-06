@@ -29,7 +29,7 @@ from tensorflow.tools.docs import doc_controls
 
 
 # Allow deprecation warnings to be silenced temporarily with a context manager.
-_PRINT_DEPRECATION_WARNINGS = True
+_PRINT_DEPRECATION_WARNINGS = False
 
 # Remember which deprecation warnings have been printed already.
 _PRINTED_WARNING = {}
