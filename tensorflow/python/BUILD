@@ -157,6 +157,7 @@ py_library(
         ":nn",
         ":ops",
         ":platform",
+        ":prefetch",
         ":proto_ops",
         ":pywrap_tensorflow",
         ":pywrap_tfe",
@@ -1504,6 +1505,20 @@ py_library(
         "//tensorflow/python/framework:for_generated_wrappers",
         "//tensorflow/python/framework:random_seed",
         "//tensorflow/python/framework:tensor_util",
+    ],
+)
+
+py_library(
+    name = "prefetch",
+    srcs = ["ops/prefetch.py"],
+    srcs_version = "PY2AND3",
+    deps = [
+        ":array_ops",
+        ":clip_ops",
+        ":control_flow_ops",
+        ":framework",
+        ":framework_ops",
+        ":framework_for_generated_wrappers",
     ],
 )
 

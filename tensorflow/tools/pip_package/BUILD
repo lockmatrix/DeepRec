@@ -115,6 +115,7 @@ COMMON_PIP_DEPS = [
     "//tensorflow/python/autograph/pyct/common_transformers:common_transformers",
     "//tensorflow/python/compiler:compiler",
     "//tensorflow/python:cond_v2",
+    "//tensorflow/python:prefetch",
     "//tensorflow/python:distributed_framework_test_lib",
     "//tensorflow/python/distribute:distribute_test_lib_pip",
     "//tensorflow/python/training/experimental:loss_scale",
