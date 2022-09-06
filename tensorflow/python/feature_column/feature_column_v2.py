@@ -520,7 +520,8 @@ def embedding_column(categorical_column,
                      tensor_name_in_ckpt=None,
                      max_norm=None,
                      trainable=True,
-                     use_safe_embedding_lookup=True):
+                     use_safe_embedding_lookup=True,
+                     do_fusion=None):
   """`DenseColumn` that converts from sparse, categorical input.
 
   Use this when your inputs are sparse, but you want to convert them to a dense
@@ -612,6 +613,9 @@ def embedding_column(categorical_column,
   if initializer is None:
     initializer = init_ops.truncated_normal_initializer(
         mean=0.0, stddev=1 / math.sqrt(dimension))
+
+  if do_fusion is not None:
+      print(f'embedding_column ignore do_fusion={do_fusion}')
 
   return EmbeddingColumn(
       categorical_column=categorical_column,
