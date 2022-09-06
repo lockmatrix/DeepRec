@@ -560,7 +560,7 @@ Status XlaCompilationCache::CompileStrict(
   it->second.compile_count++;
   it->second.cumulative_compile_time_us += compile_time_us;
   LogOnceXlaCompiledFirstCluster();
-  VLOG(1) << "compiled " << function_name << " " << it->second.compile_count
+  LOG(INFO) << "compiled " << function_name << " " << it->second.compile_count
           << " times, compile time: " << compile_time_us
           << " us, cumulative: " << it->second.cumulative_compile_time_us
           << " us ("
