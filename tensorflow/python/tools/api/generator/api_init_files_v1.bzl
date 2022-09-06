@@ -99,6 +99,9 @@ TENSORFLOW_API_INIT_FILES_V1 = [
     "version/__init__.py",
     "xla/__init__.py",
     "xla/experimental/__init__.py",
+    "python/__init__.py",
+    "python/ops/__init__.py",
+    "python/ops/embedding_ops/__init__.py"
     # END GENERATED FILES
 ]
 

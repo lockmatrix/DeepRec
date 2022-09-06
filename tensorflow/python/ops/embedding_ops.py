@@ -951,6 +951,14 @@ def safe_embedding_lookup_sparse(embedding_weights,
     return final_result
 
 
+@tf_export(v1=["python.ops.embedding_ops.fused_safe_embedding_lookup_sparse"])
+def fused_safe_embedding_lookup_sparse(embedding_weights,
+                                       sparse_ids,
+                                       sparse_weights=None):
+    print('fused_safe_embedding_lookup_sparse fallback to safe_embedding_lookup_sparse')
+    return safe_embedding_lookup_sparse(embedding_weights, sparse_ids, sparse_weights)
+
+
 def embedding_lookup_ragged(embedding_weights,
                             ragged_ids,
                             partition_strategy="mod",
