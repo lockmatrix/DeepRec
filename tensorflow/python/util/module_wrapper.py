@@ -146,9 +146,7 @@ class TFModuleWrapper(FastModuleType):
         call_location = _call_location()
         # skip locations in Python source
         if not call_location.startswith('<'):
-          logging.warning(
-              'From %s: The name %s is deprecated. Please use %s instead.\n',
-              _call_location(), full_name, rename)
+          # logging.warning('From %s: The name %s is deprecated. Please use %s instead.\n', _call_location(), full_name, rename)
           self._tfmw_warning_count += 1
           return True
     return False

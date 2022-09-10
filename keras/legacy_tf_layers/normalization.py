@@ -437,15 +437,6 @@ def batch_normalization(
 
     @end_compatibility
     """
-    warnings.warn(
-        "`tf.layers.batch_normalization` is deprecated and "
-        "will be removed in a future version. "
-        "Please use `tf.keras.layers.BatchNormalization` instead. "
-        "In particular, `tf.control_dependencies(tf.GraphKeys.UPDATE_OPS)` "
-        "should not be used (consult the `tf.keras.layers.BatchNormalization` "
-        "documentation).",
-        stacklevel=2,
-    )
     layer = BatchNormalization(
         axis=axis,
         momentum=momentum,

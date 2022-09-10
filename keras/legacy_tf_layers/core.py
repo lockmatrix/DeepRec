@@ -249,12 +249,6 @@ def dense(
     @end_compatibility
 
     """
-    warnings.warn(
-        "`tf.layers.dense` is deprecated and "
-        "will be removed in a future version. "
-        "Please use `tf.keras.layers.Dense` instead.",
-        stacklevel=2,
-    )
     layer = Dense(
         units,
         activation=activation,

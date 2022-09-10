@@ -167,9 +167,6 @@ def dense(
   Raises:
     ValueError: if eager execution is enabled.
   """
-  warnings.warn('`tf.layers.dense` is deprecated and '
-                'will be removed in a future version. '
-                'Please use `tf.keras.layers.Dense` instead.')
   layer = Dense(units,
                 activation=activation,
                 use_bias=use_bias,

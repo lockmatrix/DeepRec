@@ -231,9 +231,7 @@ def deprecated_alias(deprecated_name, name, func_or_class, warn_once=True):
           if _NewClass.__init__ not in _PRINTED_WARNING:
             if warn_once:
               _PRINTED_WARNING[_NewClass.__init__] = True
-            logging.warning(
-                'From %s: The name %s is deprecated. Please use %s instead.\n',
-                _call_location(), deprecated_name, name)
+            # logging.warning('From %s: The name %s is deprecated. Please use %s instead.\n',_call_location(), deprecated_name, name)
         super(_NewClass, self).__init__(*args, **kwargs)
 
     return _NewClass
@@ -250,9 +248,7 @@ def deprecated_alias(deprecated_name, name, func_or_class, warn_once=True):
         if new_func not in _PRINTED_WARNING:
           if warn_once:
             _PRINTED_WARNING[new_func] = True
-          logging.warning(
-              'From %s: The name %s is deprecated. Please use %s instead.\n',
-              _call_location(), deprecated_name, name)
+          # logging.warning('From %s: The name %s is deprecated. Please use %s instead.\n', _call_location(), deprecated_name, name)
       return func_or_class(*args, **kwargs)
     return tf_decorator.make_decorator(
         func_or_class, new_func, 'deprecated',
