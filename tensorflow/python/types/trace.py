@@ -27,8 +27,12 @@ traced (a process known as retracing).
 
 import abc
 from typing import Optional, Sequence
-from typing_extensions import Protocol
-from typing_extensions import runtime_checkable
+try:
+  from tensorflow.contrib.typing_extensions_3_10_pack.typing_extensions import Protocol
+  from tensorflow.contrib.typing_extensions_3_10_pack.typing_extensions import runtime_checkable
+except ImportError:
+  from typing_extensions import Protocol
+  from typing_extensions import runtime_checkable
 from tensorflow.python.util.tf_export import tf_export
 from tensorflow.tools.docs import doc_controls
 

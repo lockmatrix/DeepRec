@@ -227,6 +227,12 @@ function prepare_src() {
   echo "pack keras 2.10"
   cp -r keras ${TMPDIR}
 
+  echo "pack typing_extensions 3.10.0 in tensorflow/contrib"
+  echo "pack tensorflow/contrib"
+  cp -r tensorflow/contrib ${TMPDIR}/tensorflow/
+
+  ls -l ${TMPDIR}
+
   # TODO(annarev): copy over API files from tensorflow/api/_vN to tensorflow/
   #   except tensorflow/api/_vN/lite/.
 

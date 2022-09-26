@@ -29,8 +29,12 @@ if sys.version_info >= (3, 8):
   from typing import Protocol
   from typing import runtime_checkable
 else:
-  from typing_extensions import Protocol
-  from typing_extensions import runtime_checkable
+  try:
+    from tensorflow.contrib.typing_extensions_3_10_pack.typing_extensions import Protocol
+    from tensorflow.contrib.typing_extensions_3_10_pack.typing_extensions import runtime_checkable
+  except ImportError:
+    from typing_extensions import Protocol
+    from typing_extensions import runtime_checkable
 # pylint:enable=g-import-not-at-top
 
 # TODO(mdan): Consider adding ABC once the dependence on isinstance is reduced.

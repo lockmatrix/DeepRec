@@ -21,7 +21,11 @@ import tempfile
 import typing
 
 from absl.testing import parameterized
-import typing_extensions
+
+try:
+  import tensorflow.contrib.typing_extensions_3_10_pack.typing_extensions as typing_extensions
+except ImportError:
+  import typing_extensions
 
 from tensorflow.core.framework import full_type_pb2
 from tensorflow.python.data.ops import dataset_ops

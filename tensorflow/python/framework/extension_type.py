@@ -16,7 +16,11 @@
 
 import abc
 import typing
-import typing_extensions
+
+try:
+  import tensorflow.contrib.typing_extensions_3_10_pack.typing_extensions as typing_extensions
+except ImportError:
+  import typing_extensions
 
 from tensorflow.python.framework import composite_tensor
 from tensorflow.python.framework import dtypes
