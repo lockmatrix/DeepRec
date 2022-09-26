@@ -15,7 +15,11 @@
 """Opensource base_dir configuration for tensorflow doc-generator."""
 from os import path
 
-from packaging import version
+try:
+    from tensorflow.contrib.packaging_21_3_pack import version
+except ImportError:
+    from packaging import version
+
 import tensorboard
 import tensorflow as tf
 from tensorflow_docs.api_generator import public_api

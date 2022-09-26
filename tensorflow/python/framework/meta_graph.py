@@ -15,7 +15,12 @@
 
 """MetaGraph and related functions."""
 import copy
-from packaging import version as packaging_version  # pylint: disable=g-bad-import-order
+
+try:
+  from tensorflow.contrib.packaging_21_3_pack import version as packaging_version
+except ImportError:
+  from packaging import version as packaging_version
+
 import os.path
 import re
 

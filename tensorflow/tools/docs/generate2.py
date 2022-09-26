@@ -32,7 +32,11 @@ from typing import NamedTuple
 
 from absl import app
 from absl import flags
-from packaging import version
+
+try:
+    from tensorflow.contrib.packaging_21_3_pack import version
+except ImportError:
+    from packaging import version
 
 import tensorflow as tf
 

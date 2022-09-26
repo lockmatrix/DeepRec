@@ -18,7 +18,10 @@ import collections
 import os
 import re
 
-from packaging import version
+try:
+  from tensorflow.contrib.packaging_21_3_pack import version
+except ImportError:
+  from packaging import version
 
 from tensorflow.compiler.tf2tensorrt import _pywrap_py_utils
 from tensorflow.core.protobuf import rewriter_config_pb2

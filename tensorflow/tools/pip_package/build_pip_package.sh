@@ -228,6 +228,7 @@ function prepare_src() {
   cp -r keras ${TMPDIR}
 
   echo "pack typing_extensions 3.10.0 in tensorflow/contrib"
+  echo "pack packaging 21.3 in tensorflow/contrib"
   echo "pack tensorflow/contrib"
   cp -r tensorflow/contrib ${TMPDIR}/tensorflow/
 
