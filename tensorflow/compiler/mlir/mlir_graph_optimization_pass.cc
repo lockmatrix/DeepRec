@@ -19,6 +19,7 @@ limitations under the License.
 #include <string>
 
 #include "tensorflow/compiler/mlir/tf2xla/mlir_bridge_rollout_policy.h"
+#include "absl/base/call_once.h"
 #include "absl/container/flat_hash_set.h"
 #include "llvm/ADT/STLExtras.h"
 #include "llvm/Support/FormatVariadic.h"
@@ -39,6 +40,7 @@ limitations under the License.
 #include "tensorflow/core/lib/monitoring/counter.h"
 #include "tensorflow/core/platform/status.h"
 #include "tensorflow/core/public/session_options.h"
+#include "tensorflow/core/util/env_var.h"
 
 namespace tensorflow {
 
@@ -353,7 +355,18 @@ Status MlirV1CompatGraphOptimizationPass::Run(
                    /*uses_uninitialized_resource_args=*/false,
                    /*is_v1_compat=*/true);
 
-  if (pass_state == MlirOptimizationPassState::Disabled) {
+  static bool force_enable = false;
+  static absl::once_flag once;
+  absl::call_once(once, [&] {
+      auto force_enable_status = ReadBoolFromEnvVar("TF_FORCE_ENABLE_MLIR_V1_OPT", force_enable, &force_enable);
+      if (!force_enable_status.ok()) {
+          LOG(WARNING) << "TF_FORCE_ENABLE_MLIR_V1_OPT is not set to either '0', 'false',"
+                       << " '1', or 'true'. Using the default setting: "
+                       << force_enable;
+      }
+  });
+
+  if (!force_enable && pass_state == MlirOptimizationPassState::Disabled) {
     LOG_FIRST_N(INFO, 1) << "MLIR V1 optimization pass is not enabled";
     return OkStatus();
   }

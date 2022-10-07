@@ -16,6 +16,8 @@ limitations under the License.
 #include "tensorflow/compiler/mlir/tf2xla/mlir_bridge_rollout_policy.h"
 
 #include "tensorflow/compiler/jit/flags.h"
+#include "absl/base/call_once.h"
+#include "tensorflow/core/util/env_var.h"
 
 namespace tensorflow {
 
@@ -25,7 +27,22 @@ MlirBridgeRolloutPolicy GetMlirBridgeRolloutPolicy(
     std::optional<ConfigProto> config_proto,
     bool uses_uninitialized_resource_args, bool is_v1_compat,
     bool record_stats) {
-  switch (GetMlirBridgeRolloutState(config_proto)) {
+
+    static bool force_enable = false;
+    static absl::once_flag once;
+    absl::call_once(once, [&] {
+        auto status = ReadBoolFromEnvVar("TF_FORCE_ENABLE_MLIR_BRIDGE", force_enable, &force_enable);
+        if (!status.ok()) {
+            LOG(WARNING) << "TF_FORCE_ENABLE_MLIR_BRIDGE is not set to either '0', 'false',"
+                         << " '1', or 'true'. Using the default setting: "
+                         << force_enable;
+        }
+    });
+    if(force_enable) {
+        return MlirBridgeRolloutPolicy::kEnabledAfterGraphAnalysisSafeModeFallback;
+    }
+
+    switch (GetMlirBridgeRolloutState(config_proto)) {
     case ConfigProto::Experimental::MLIR_BRIDGE_ROLLOUT_ENABLED:
       return MlirBridgeRolloutPolicy::kEnabledByUser;
     case ConfigProto::Experimental::MLIR_BRIDGE_ROLLOUT_DISABLED:
