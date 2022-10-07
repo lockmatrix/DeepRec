@@ -83,15 +83,31 @@ def standard_or_nightly(standard, nightly):
 REQUIRED_PACKAGES = [
     'absl-py >= 1.0.0',
     'astunparse >= 1.6.0',
-    'flatbuffers >= 2.0',
+
+    # 没找到Python中的依赖
+    # 'flatbuffers >= 2.0',  # TOMERGE
+
     # TODO(b/213222745) gast versions above 0.4.0 break TF's tests
     'gast >= 0.2.1, <= 0.4.0',
-    'google_pasta >= 0.1.1',
+
+    # 纯python库，AST操作，应该可以合并 import pasta
+    'google_pasta >= 0.1.1',  # TOMERGE
+
     'h5py >= 2.9.0',
-    'libclang >= 13.0.0',
-    'numpy >= 1.20',
+    'keras_preprocessing >= 1.1.1',
+
+    # 没找到Python中的依赖
+    #'libclang >= 13.0.0',  # TOMERGE
+
+    # 原来是numpy >= 1.20，尝试降级
+    'numpy >= 1.18',  # TOMERGE target 1.18.5
+
     'opt_einsum >= 2.3.2',
-    'packaging',
+
+    # 只有一处有依赖
+    # 'packaging',  # TOMERGE
+
+
     # TODO(b/182876485): Protobuf 3.20 results in linker errors on Windows
     # Protobuf 4.0 is binary incompatible with what C++ TF uses.
     # We need ~1 quarter to update properly.
@@ -99,14 +115,24 @@ REQUIRED_PACKAGES = [
     # See also: https://github.com/protocolbuffers/protobuf/issues/9954
     # See also: https://github.com/tensorflow/tensorflow/issues/56077
     # This is a temporary patch for now, to patch previous TF releases.
-    'protobuf >= 3.9.2, < 3.20',
-    'setuptools',
+
+    # 'protobuf >= 3.9.2, < 3.20',
+    'protobuf >= 3.9.2',  # TOMERGE target 4.21.0
+
+    # 好像没关系
+    #'setuptools',  # TOMERGE
+
     'six >= 1.12.0',
     'termcolor >= 1.1.0',
-    'typing_extensions >= 3.6.6',
+
+    # 有依赖，但不确定是不是必须，纯python库，可以merge
+    'typing_extensions >= 3.6.6',  # TOMERGE
+
     'wrapt >= 1.11.0',
-    'tensorflow-io-gcs-filesystem >= 0.23.1;platform_machine!="arm64" or ' +
-    'platform_system!="Darwin"',
+
+    # 感觉好像不是必须，大概是辅助库
+    # 'tensorflow-io-gcs-filesystem >= 0.23.1',  # TOMERGE
+
     # grpcio does not build correctly on big-endian machines due to lack of
     # BoringSSL support.
     # See https://github.com/tensorflow/tensorflow/issues/17882.
@@ -118,12 +144,15 @@ REQUIRED_PACKAGES = [
     # current release version. These also usually have "alpha" or "dev" in their
     # version name.
     # These are all updated during the TF release process.
-    standard_or_nightly('tensorboard >= 2.10, < 2.11',
-                        'tb-nightly ~= 2.11.0.a'),
-    standard_or_nightly('tensorflow_estimator >= 2.10.0rc0, < 2.11',
-                        'tf-estimator-nightly ~= 2.11.0.dev'),
-    standard_or_nightly('keras >= 2.10.0rc0, < 2.11',
-                        'keras-nightly ~= 2.11.0.dev'),
+
+    #感觉是辅助库
+    #standard_or_nightly('tensorboard >= 2.10, < 2.11', 'tb-nightly ~= 2.11.0.a'),  # TOMERGE tensorboard==1.15.0
+
+    #感觉是辅助库，纯python库，可以merge
+    #standard_or_nightly('tensorflow_estimator >= 2.10.0, < 2.11', 'tf-estimator-nightly ~= 2.11.0.dev'), # TOMERGE tensorflow-estimator==1.15.2
+
+    # 纯python库，可以merge
+    # standard_or_nightly('keras >= 2.10.0, < 2.11', 'keras-nightly ~= 2.11.0.dev'), # TOMERGE Keras-Applications==1.0.8
 ]
 REQUIRED_PACKAGES = [p for p in REQUIRED_PACKAGES if p is not None]
 
