@@ -16,7 +16,8 @@
 
 import collections
 import inspect
-from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple, OrderedDict
+from typing import Any, Callable, Dict, Mapping, Optional, Sequence, Tuple
+from collections import OrderedDict
 
 from tensorflow.core.function import trace_type
 from tensorflow.python.types import trace
@@ -120,7 +121,7 @@ class FunctionType(inspect.Signature):
 
   def __init__(self,
                parameters: Sequence[inspect.Parameter],
-               captures: Optional[OrderedDict[str, trace.TraceType]] = None,
+               captures = None,
                **kwargs):
     super().__init__(parameters, **kwargs)
     self._captures = captures if captures else collections.OrderedDict()
@@ -130,7 +131,7 @@ class FunctionType(inspect.Signature):
     return super().parameters
 
   @property
-  def captures(self) -> OrderedDict[str, trace.TraceType]:
+  def captures(self):
     return self._captures
 
   # TODO(fmuham): Use this method instead of fullargspec and tf_inspect.
