@@ -64,6 +64,7 @@ bool GpuSupportsHalfMatMulAndConv() {
 
 bool IsMklEnabled() {
 #ifndef INTEL_MKL
+  LOG(INFO) << "INTEL_MKL ndef, MKLEnabled return false";
   return false;
 #endif
   static absl::once_flag once;  // NOLINT(clang-diagnostic-unreachable-code)
@@ -74,6 +75,7 @@ bool IsMklEnabled() {
     TF_CHECK_OK(ReadBoolFromEnvVar("TF_DISABLE_MKL", false, &oneDNN_disabled));
     if (oneDNN_disabled) VLOG(2) << "TF-MKL: Disabling oneDNN";
   });
+  LOG(INFO) << "ENABLE_MKL def, MKLEnabled return " << !oneDNN_disabled;
   return (!oneDNN_disabled);
 #else
   // Linux: Turn oneDNN on by default for CPUs with neural network features.
@@ -89,9 +91,11 @@ bool IsMklEnabled() {
       port::TestCPUFeature(port::CPUFeature::AMX_INT8) ||
       port::TestCPUFeature(port::CPUFeature::AMX_BF16);
 #else
-      false;
+      true;
 #endif  // __linux__
+
   absl::call_once(once, [&] {
+    LOG(INFO) << "oneDNN_enabled default=" << oneDNN_enabled;
     auto status = ReadBoolFromEnvVar("TF_ENABLE_ONEDNN_OPTS", oneDNN_enabled,
                                      &oneDNN_enabled);
     if (!status.ok()) {
@@ -99,6 +103,7 @@ bool IsMklEnabled() {
                    << " '1', or 'true'. Using the default setting: "
                    << oneDNN_enabled;
     }
+    LOG(INFO) << "oneDNN_enabled current=" << oneDNN_enabled;
     if (oneDNN_enabled) {
 #ifndef DNNL_AARCH64_USE_ACL
       LOG(INFO) << "oneDNN custom operations are on. "
