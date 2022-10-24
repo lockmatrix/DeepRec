@@ -217,7 +217,13 @@ function prepare_src() {
   rm -f ${TMPDIR}/tensorflow/libtensorflow_framework.so
   rm -f ${TMPDIR}/tensorflow/libtensorflow_framework.so.[0-9].*
 
-  # 鎵撳寘瀹氬埗鐨刲ibstdc++.so.6
+  # Copying symlinks with -L duplicates these libraries.
+  rm -f ${TMPDIR}/tensorflow/libtensorflow_framework.dylib
+  rm -f ${TMPDIR}/tensorflow/libtensorflow_framework.[0-9].*.dylib
+  rm -f ${TMPDIR}/tensorflow/libtensorflow_cc.dylib
+  rm -f ${TMPDIR}/tensorflow/libtensorflow_cc.[0-9].*.dylib
+
+  # 打包定制的libstdc++.so.6
   if [ -f "/home/linuxbrew/.linuxbrew/lib/gcc/current/libstdc++.so.6" ]; then
       echo "pack /home/linuxbrew/.linuxbrew/lib/gcc/current/libstdc++.so.6"
       cp /home/linuxbrew/.linuxbrew/lib/gcc/current/libstdc++.so.6 ${TMPDIR}/tensorflow/python/
