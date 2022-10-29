@@ -66,6 +66,8 @@ tensorflow/lite/delegates/gpu/cl/serialization_generated.h:
 tensorflow/lite/delegates/gpu/common/gpu_model_generated.h:
 tensorflow/lite/delegates/gpu/common/task/serialization_base_generated.h:
 tensorflow/lite/delegates/hexagon/hexagon_nn/BUILD:
+tensorflow/lite/experimental/acceleration/configuration/c/BUILD:
+tensorflow/lite/experimental/acceleration/configuration/c/vendor_delegate.h:
 tensorflow/lite/experimental/acceleration/configuration/configuration_generated.h:
 tensorflow/lite/experimental/acceleration/mini_benchmark/libjpeg.h:
 tensorflow/lite/experimental/acceleration/mini_benchmark/special_rules.bzl:
@@ -83,7 +85,6 @@ tensorflow/python/tpu/profiler/pip_package/build_pip_package.sh:
 tensorflow/python/tpu/profiler/pip_package/setup:.py
 tensorflow/python/tpu/tpu.bzl:
 tensorflow/security/fuzzing/tf_fuzzing:.bzl
-tensorflow/stream_executor/build_defs.bzl:
 tensorflow/tools/benchmark/parse_onednn_benchmarks:.py
 tensorflow/tools/benchmark/run_models:.sh
 tensorflow/tools/benchmark/run_onednn_benchmarks:.sh

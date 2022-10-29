@@ -42,6 +42,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/gpu/gpu_executable_run_options.h"
 #include "tensorflow/compiler/xla/service/gpu/gpu_types.h"
 #include "tensorflow/compiler/xla/service/gpu/jitrt_custom_calls.h"
+#include "tensorflow/compiler/xla/service/gpu/runtime/cublas_lt_matmul.h"
 #include "tensorflow/compiler/xla/service/gpu/runtime/kernel_launch.h"
 #include "tensorflow/compiler/xla/service/gpu/stream_executor_util.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
@@ -156,6 +157,7 @@ class GpuExecutable::XlaRuntimeGpuExecutable {
 
   GpuExecutableKernelsCache& kernels_cache() { return kernels_cache_; }
   JitRtGemmConfigCache& gemm_configs_cache() { return gemm_configs_cache_; }
+  ConvRunnerCache& conv_runners_cache() { return conv_runners_cache_; }
   JitRtCollectiveSupport& collectives() { return collectives_; }
 
   runtime::Executable& executable() {
@@ -240,6 +242,9 @@ class GpuExecutable::XlaRuntimeGpuExecutable {
 
   // Keep a cache of gemm configs for all gemm operation in the program.
   JitRtGemmConfigCache gemm_configs_cache_;
+
+  // Keep a cache for conv configs for all conv operations in the program.
+  ConvRunnerCache conv_runners_cache_;
 
   // Support for running collective operations.
   JitRtCollectiveSupport collectives_;
@@ -690,6 +695,7 @@ static Status ExecuteXlaRuntime(
       &executable, run_options, &xla_runtime_executable->debug_options(),
       &asm_text, &binary, &dm_buffer, &xla_runtime_executable->kernels_cache(),
       &xla_runtime_executable->gemm_configs_cache(),
+      &xla_runtime_executable->conv_runners_cache(),
       &xla_runtime_executable->collectives(),
       async_collectives.async_comm_stream() ? &async_collectives : nullptr);
   opts.custom_call_data = &user_data;

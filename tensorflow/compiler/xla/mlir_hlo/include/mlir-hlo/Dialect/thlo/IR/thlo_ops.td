@@ -43,13 +43,12 @@ class THLO_Op<string mnemonic, list<Trait> traits> :
 }
 
 class THLO_DstStyleOp<string mnemonic, list<Trait> traits> : THLO_Op<mnemonic, [
-    DestinationStyleOpInterface, Pure] # traits> {
+    DestinationStyleOpInterface] # traits> {
   let hasCustomAssemblyFormat = 1;
 }
 
 def THLO_YieldOp : THLO_Op<"yield", [Pure, ReturnLike, Terminator,
-    ParentOneOf<["MapOp", "ReductionOp", "ScatterOp", "SortOp",
-                 "TransposeOp"]>]>,
+    ParentOneOf<["MapOp", "ScatterOp", "SortOp"]>]>,
     Arguments<(ins Variadic<AnyType>:$values)> {
   let summary = "Yield operation for tHLO ops with regions.";
   let assemblyFormat = "attr-dict $values `:` type($values)";
@@ -68,7 +67,7 @@ def THLO_ConcatenateOp : THLO_DstStyleOp<"concatenate", [
 
   let extraClassDeclaration = [{
     // Implement method necessary for DestinationStyleOpInterface.
-    std::pair<int64_t, int64_t> getOutputsPositionRange() {
+    std::pair<int64_t, int64_t> getDpsInitsPositionRange() {
       int64_t getNumOperands = this->getNumOperands();
       return {getNumOperands - 1, getNumOperands};
     }
@@ -94,7 +93,7 @@ def THLO_DynamicBroadcastInDimOp : THLO_DstStyleOp<"dynamic_broadcast_in_dim", [
 
   let extraClassDeclaration = [{
     // Implement method necessary for DestinationStyleOpInterface.
-    std::pair<int64_t, int64_t> getOutputsPositionRange() {
+    std::pair<int64_t, int64_t> getDpsInitsPositionRange() {
       int64_t getNumOperands = this->getNumOperands();
       return {getNumOperands - 1, getNumOperands};
     }
@@ -124,7 +123,7 @@ def THLO_GatherOp : THLO_DstStyleOp<"gather", [
 
   let extraClassDeclaration = [{
     // Implement method necessary for DestinationStyleOpInterface.
-    std::pair<int64_t, int64_t> getOutputsPositionRange() {
+    std::pair<int64_t, int64_t> getDpsInitsPositionRange() {
       int64_t getNumOperands = this->getNumOperands();
       return {getNumOperands - 1, getNumOperands};
     }
@@ -167,7 +166,7 @@ def THLO_ScatterOp : THLO_DstStyleOp<"scatter", [
     int64_t getIndicesCount() { return getIndices().getType().getDimSize(0); }
 
     // Implement method necessary for DestinationStyleOpInterface.
-    std::pair<int64_t, int64_t> getOutputsPositionRange() {
+    std::pair<int64_t, int64_t> getDpsInitsPositionRange() {
       int64_t getNumOperands = this->getNumOperands();
       return {getNumOperands - 1, getNumOperands};
     }
@@ -223,7 +222,7 @@ def THLO_TransposeOp : THLO_DstStyleOp<"transpose", [
                              ::mlir::OperationState & odsState);
 
     // Implement method necessary for DestinationStyleOpInterface.
-    std::pair<int64_t, int64_t> getOutputsPositionRange() {
+    std::pair<int64_t, int64_t> getDpsInitsPositionRange() {
       int64_t getNumOperands = this->getNumOperands();
       return {getNumOperands - 1, getNumOperands};
     }
@@ -272,7 +271,7 @@ def THLO_ReductionOp : THLO_DstStyleOp<"reduction", [
     }
 
     // Implement method necessary for DestinationStyleOpInterface.
-    std::pair<int64_t, int64_t> getOutputsPositionRange() {
+    std::pair<int64_t, int64_t> getDpsInitsPositionRange() {
       return {getInits().size(), getNumOperands()};
     }
   }];
@@ -312,7 +311,7 @@ def THLO_MapOp : THLO_DstStyleOp<"map", [
 
   let extraClassDeclaration = [{
     mlir::OpOperandVector getOpOperandsMatchingBBargs() {
-      return getInputOperands();
+      return getDpsInputOperands();
     }
 
     static std::function<void(mlir::ImplicitLocOpBuilder &, mlir::Block &,
@@ -322,14 +321,14 @@ def THLO_MapOp : THLO_DstStyleOp<"map", [
     }
 
     // Implement method necessary for DestinationStyleOpInterface.
-    std::pair<int64_t, int64_t> getOutputsPositionRange() {
+    std::pair<int64_t, int64_t> getDpsInitsPositionRange() {
       int64_t getNumOperands = this->getNumOperands();
       return {getNumOperands - 1, getNumOperands};
     }
   }];
 }
 
-def THLO_SortOp : THLO_DstStyleOp<"sort", [RecursiveMemoryEffects,
+def THLO_SortOp : THLO_DstStyleOp<"sort", [
         DeclareOpInterfaceMethods<TilingInterface>, SameVariadicOperandSize,
         SingleBlockImplicitTerminator<"YieldOp">]> {
   let summary = "Destination-style twin for the `mhlo.sort`";
@@ -366,7 +365,7 @@ def THLO_SortOp : THLO_DstStyleOp<"sort", [RecursiveMemoryEffects,
 
   let extraClassDeclaration = [{
     // Implement method necessary for DestinationStyleOpInterface.
-    std::pair<int64_t, int64_t> getOutputsPositionRange() {
+    std::pair<int64_t, int64_t> getDpsInitsPositionRange() {
       int64_t getNumOperands = this->getNumOperands();
       return {getNumOperands - getInits().size(), getNumOperands};
     }

@@ -216,7 +216,7 @@ class SavedModelImpl final : public SavedModel {
       std::unique_ptr<tfrt::ResourceContext> resource_context,
       std::unique_ptr<GraphExecutor> graph_executor);
 
-  ~SavedModelImpl() override;
+  ~SavedModelImpl() override = default;
 
   SavedModelImpl(const SavedModelImpl&) = delete;
   SavedModelImpl& operator=(const SavedModelImpl&) = delete;

@@ -314,18 +314,18 @@ struct ReductionPattern : public OpConversionPattern<mhlo::ReduceOp> {
     // while the thlo.reduction op expects the init values as the last
     // parameters of the 'combiner' region apply function.
     TypeConverter::SignatureConversion signatureConverter(
-        thloReduction.getNumInputs() * 2);
-    assert(thloReduction.getNumInputs() == thloReduction.getNumOutputs());
+        thloReduction.getNumDpsInputs() * 2);
+    assert(thloReduction.getNumDpsInputs() == thloReduction.getNumDpsInits());
     for (const auto& [idx, val] : llvm::enumerate(operandTypes)) {
       signatureConverter.addInputs(
-          /*origInputNo=*/idx + thloReduction.getNumInputs(),
+          /*origInputNo=*/idx + thloReduction.getNumDpsInputs(),
           // type for new operand number 'idx'.
           typeConverter->convertType(val.getElementType()));
     }
     for (const auto& [idx, val] : llvm::enumerate(initTypes)) {
       signatureConverter.addInputs(
           /*origInputNo=*/idx,
-          // type for new operand number 'idx' + thloReduction.getNumInputs()
+          // type for new operand number 'idx' + thloReduction.getNumDpsInputs()
           typeConverter->convertType(val.getElementType()));
     }
     rewriter.applySignatureConversion(&region, signatureConverter,
@@ -338,8 +338,8 @@ struct ReductionPattern : public OpConversionPattern<mhlo::ReduceOp> {
 
 bool isInBodyOfThloOp(Operation* op) {
   auto* parentOp = op->getParentRegion()->getParentOp();
-  return isa<thlo::MapOp>(*parentOp) || isa<thlo::ReductionOp>(*parentOp) ||
-         isa<thlo::ScatterOp>(*parentOp) || isa<thlo::SortOp>(*parentOp);
+  return isa<thlo::MapOp>(*parentOp) || isa<thlo::ScatterOp>(*parentOp) ||
+         isa<thlo::SortOp>(*parentOp);
 }
 
 // Rewrites a mhlo::ReturnOp inside a thlo::ReductionOp to thlo::YieldOp.
@@ -403,28 +403,6 @@ struct ScatterPattern : public OpConversionPattern<mhlo::ScatterOp> {
   }
 };
 
-struct TransposePattern : public OpConversionPattern<mhlo::TransposeOp> {
-  using OpConversionPattern<mhlo::TransposeOp>::OpConversionPattern;
-
-  LogicalResult matchAndRewrite(
-      mhlo::TransposeOp op, OpAdaptor adaptor,
-      ConversionPatternRewriter& rewriter) const override {
-    auto resultTy = typeConverter->convertType(op.getType()).cast<ShapedType>();
-
-    auto loc = op.getLoc();
-    Value emptyTensor =
-        getEmptyTensorFor(rewriter, loc, resultTy, op, adaptor.getOperands());
-
-    auto permutation = rewriter.getDenseI64ArrayAttr(
-        llvm::to_vector(op.getPermutation().getValues<int64_t>()));
-
-    rewriter.replaceOpWithNewOp<thlo::TransposeOp>(
-        op, op.getType(), op.getOperand(), emptyTensor, permutation);
-
-    return success();
-  }
-};
-
 struct MapPattern : public OpConversionPattern<mhlo::MapOp> {
   using OpConversionPattern<mhlo::MapOp>::OpConversionPattern;
 
@@ -445,7 +423,7 @@ struct MapPattern : public OpConversionPattern<mhlo::MapOp> {
     rewriter.inlineRegionBefore(op.getComputation(), region, region.end());
 
     TypeConverter::SignatureConversion signatureConverter(
-        thloMap.getNumInputs());
+        thloMap.getNumDpsInputs());
     for (const auto& [idx, val] : llvm::enumerate(thloMap.getInputs())) {
       signatureConverter.addInputs(
           idx,
@@ -566,11 +544,11 @@ struct SortPattern : public OpConversionPattern<mhlo::SortOp> {
     Region& region = thloSort.getComparator();
     rewriter.inlineRegionBefore(op.getComparator(), region, region.end());
 
-    assert(thloSort.getNumInputs() == thloSort.getNumOutputs());
+    assert(thloSort.getNumDpsInputs() == thloSort.getNumDpsInits());
 
     // Convert the signature of the comparator.
     TypeConverter::SignatureConversion signatureConverter(
-        thloSort.getNumInputs() * 2);
+        thloSort.getNumDpsInputs() * 2);
     for (const auto& [idx, val] : llvm::enumerate(operandTypes)) {
       signatureConverter.addInputs(
           /*origInputNo=*/2 * idx,
@@ -763,10 +741,8 @@ class LegalizeMHLOToTHLOPass
           PointwiseToTHLOConverter<mhlo::SubtractOp>,
           PointwiseToTHLOConverter<mhlo::TanhOp>,
           PointwiseToTHLOConverter<mhlo::XorOp>,
-          ReductionPattern,
           SelectPattern,
-          ThloRegionReturnOpConversion,
-          TransposePattern>(*typeConverter, ctx);
+          ThloRegionReturnOpConversion>(*typeConverter, ctx);
       // clang-format on
     }
 
