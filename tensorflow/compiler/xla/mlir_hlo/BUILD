@@ -438,10 +438,12 @@ cc_library(
         "include/mlir-hlo/Dialect/mhlo/IR/hlo_ops_typedefs.cc.inc",
         "include/mlir-hlo/Dialect/mhlo/IR/hlo_ops_typedefs.h.inc",
         "lib/Dialect/mhlo/IR/hlo_ops.cc",
+        "lib/Dialect/mhlo/IR/mhlo_bytecode.cc",
         "lib/utils/hlo_utils.cc",
     ],
     hdrs = [
         "include/mlir-hlo/Dialect/mhlo/IR/hlo_ops.h",
+        "include/mlir-hlo/Dialect/mhlo/IR/mhlo_bytecode.h",
         "include/mlir-hlo/utils/hlo_utils.h",
     ],
     includes = ["include"],
@@ -1051,6 +1053,7 @@ cc_library(
         "lib/Transforms/copy_removal.cc",
         "lib/Transforms/detensorize_scf_ops.cc",
         "lib/Transforms/generic_host_to_llvm.cc",
+        "lib/Transforms/inline_fusion_pass.cc",
         "lib/Transforms/lower_index_cast_pass.cc",
         "lib/Transforms/propagate_static_shapes_to_kernel.cc",
         "lib/Transforms/scalarization.cc",
@@ -1172,6 +1175,7 @@ cc_library(
         "@llvm-project//mlir:SCFTransforms",
         "@llvm-project//mlir:ShapeToStandard",
         "@llvm-project//mlir:Transforms",
+        "@llvm-project//mlir:VectorToLLVM",
     ],
 )
 

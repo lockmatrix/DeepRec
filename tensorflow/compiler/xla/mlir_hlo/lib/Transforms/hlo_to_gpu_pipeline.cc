@@ -37,13 +37,22 @@ using namespace mlir;
 using ::mlir::func::FuncOp;
 using ::mlir::gpu::GPUModuleOp;
 
+static constexpr const char* kBlockDistributionLabel = "block";
+static constexpr const char* kWarpDistributionLabel = "warp";
+static constexpr const char* kThreadDistributionLabel = "thread";
+
 // TODO(b/233761238): We only want to have this pipeline temporarily, as it is
 // not yet clear how exactly it will look like. The goal is to merge this with
 // the unified kernel generator + autofusion + XLA Next pipeline once we have
 // it, and once this code stabilizes.
 void mlir::createHloToGpuPipeline(OpPassManager& pm,
-                                  const HloToGpuPipelineOptions& options) {
+                                  ArrayRef<int64_t> blockTileDim,
+                                  ArrayRef<int64_t> warpTileDim,
+                                  ArrayRef<int64_t> threadTileDim,
+                                  bool experimentalSoftmax) {
   pm.addNestedPass<FuncOp>(hlo::createUnbufferizePass());
+  pm.addNestedPass<FuncOp>(hlo::createInlineFusionPass());
+  pm.addPass(createCSEPass());  // Combine repeated subtract(broadcast).
 
   // HLO -> Linalg
   pm.addNestedPass<FuncOp>(mhlo::createChloLegalizeToHloPass());
@@ -51,23 +60,24 @@ void mlir::createHloToGpuPipeline(OpPassManager& pm,
   pm.addNestedPass<FuncOp>(mhlo::createLegalizeHloToLinalgPass());
 
   // Perform tiling either for softmax or for element-wise.
-  if (options.experimentalSoftmax) {
+  if (experimentalSoftmax) {
     // Simplify unit dimension.
     pm.addPass(mlir::createLinalgFoldUnitExtentDimsPass());
 
     // Tile parallel dimensions of the softmax-like patterns and distribute them
     // across warps. Warps remain independant of each other.
     pm.addNestedPass<FuncOp>(gml_st::createTilingSoftmaxPass(
-        /*distribute=*/true, options.blockTileDim, "block"));
+        /*distribute=*/true, blockTileDim, kBlockDistributionLabel));
     pm.addNestedPass<FuncOp>(gml_st::createTilingSoftmaxPass(
-        /*distribute=*/true, options.warpTileDim, "warp"));
+        /*distribute=*/true, warpTileDim, kWarpDistributionLabel));
 
     // GPU-specific tiling for ops on the warp level.
     pm.addNestedPass<FuncOp>(gml_st::createTilingGPUWarpPass());
     pm.addNestedPass<FuncOp>(createScalarizationPass());
 
     pm.addNestedPass<FuncOp>(gml_st::createVectorizeGmlStLoopsPass(
-        /*vectorizeGmlStOps=*/true, /*distributionLabels=*/{"warp", "thread"}));
+        /*vectorizeGmlStOps=*/true, /*distributionLabels=*/{
+            kWarpDistributionLabel, kThreadDistributionLabel}));
   } else {
     // TODO(b/244313563): This is a workaround to avoid temporary allocs within
     // threads. It works for as long as all of our operations are cwise.
@@ -77,11 +87,11 @@ void mlir::createHloToGpuPipeline(OpPassManager& pm,
 
     // Tiling
     pm.addNestedPass<FuncOp>(gml_st::createTilingCwisePass(
-        /*distribute=*/true, options.blockTileDim, "block"));
+        /*distribute=*/true, blockTileDim, kBlockDistributionLabel));
     pm.addNestedPass<FuncOp>(gml_st::createTilingCwisePass(
-        /*distribute=*/true, options.warpTileDim, "warp"));
+        /*distribute=*/true, warpTileDim, kWarpDistributionLabel));
     pm.addNestedPass<FuncOp>(gml_st::createTilingCwisePass(
-        /*distribute=*/true, options.threadTileDim, "thread"));
+        /*distribute=*/true, threadTileDim, kThreadDistributionLabel));
     pm.addNestedPass<FuncOp>(createScalarizationPass());
   }
 

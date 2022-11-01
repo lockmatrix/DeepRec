@@ -1255,7 +1255,10 @@ class DatasetV2(
     Returns:
       A new `Dataset` with the transformation applied as described above.
     """
-    return ZipDataset(datasets, name=name)
+    # Loaded lazily due to a circular dependency (dataset_ops -> zip_op ->
+    # dataset_ops).
+    from tensorflow.python.data.ops import zip_op  # pylint: disable=g-import-not-at-top
+    return zip_op.zip(datasets, name)
 
   def concatenate(self, dataset, name=None):
     """Creates a `Dataset` by concatenating the given dataset with this dataset.
@@ -2176,6 +2179,53 @@ class DatasetV2(
     from tensorflow.python.data.ops import ragged_batch_op  # pylint: disable=g-import-not-at-top
     return ragged_batch_op.ragged_batch(self, batch_size, drop_remainder,
                                         row_splits_dtype, name)
+
+  def sparse_batch(self, batch_size, row_shape, name=None):
+    """Combines consecutive elements into `tf.sparse.SparseTensor`s.
+
+    Like `Dataset.padded_batch()`, this transformation combines multiple
+    consecutive elements of the dataset, which might have different
+    shapes, into a single element. The resulting element has three
+    components (`indices`, `values`, and `dense_shape`), which
+    comprise a `tf.sparse.SparseTensor` that represents the same data. The
+    `row_shape` represents the dense shape of each row in the
+    resulting `tf.sparse.SparseTensor`, to which the effective batch size is
+    prepended. For example:
+
+    ```python
+    # NOTE: The following examples use `{ ... }` to represent the
+    # contents of a dataset.
+    a = { ['a', 'b', 'c'], ['a', 'b'], ['a', 'b', 'c', 'd'] }
+
+    a.apply(tf.data.experimental.dense_to_sparse_batch(
+        batch_size=2, row_shape=[6])) ==
+    {
+        ([[0, 0], [0, 1], [0, 2], [1, 0], [1, 1]],  # indices
+         ['a', 'b', 'c', 'a', 'b'],                 # values
+         [2, 6]),                                   # dense_shape
+        ([[0, 0], [0, 1], [0, 2], [0, 3]],
+         ['a', 'b', 'c', 'd'],
+         [1, 6])
+    }
+    ```
+
+    Args:
+      batch_size: A `tf.int64` scalar `tf.Tensor`, representing the number of
+        consecutive elements of this dataset to combine in a single batch.
+      row_shape: A `tf.TensorShape` or `tf.int64` vector tensor-like object
+        representing the equivalent dense shape of a row in the resulting
+        `tf.sparse.SparseTensor`. Each element of this dataset must have the
+        same rank as `row_shape`, and must have size less than or equal to
+        `row_shape` in each dimension.
+      name: (Optional.) A string indicating a name for the `tf.data` operation.
+
+    Returns:
+      A new `Dataset` with the transformation applied as described above.
+    """
+    # Loaded lazily due to a circular dependency (dataset_ops ->
+    # sparse_batch_op -> dataset_ops).
+    from tensorflow.python.data.ops import sparse_batch_op  # pylint: disable=g-import-not-at-top
+    return sparse_batch_op.sparse_batch(self, batch_size, row_shape, name)
 
   def map(self,
           map_func,
@@ -4982,40 +5032,6 @@ class _GeneratorDataset(DatasetSource):
 
   def _transformation_name(self):
     return "Dataset.from_generator()"
-
-
-class ZipDataset(DatasetV2):
-  """A `Dataset` that zips its inputs together."""
-
-  def __init__(self, datasets, name=None):
-    """See `Dataset.zip()` for details."""
-    for ds in nest.flatten(datasets):
-      if not isinstance(ds, DatasetV2):
-        if isinstance(ds, list):
-          raise TypeError("Invalid `datasets`. `datasets` is expected to be a "
-                          "(nested) structure of `tf.data.Dataset` objects. "
-                          "Python `list` is not supported and you should use "
-                          "`tuple` instead.")
-        else:
-          raise TypeError(f"Invalid `datasets`. `datasets` is expected to be a "
-                          f"(nested) structure of `tf.data.Dataset` objects "
-                          f"but encountered object of type {type(ds)}.")
-    self._datasets = datasets
-    self._structure = nest.pack_sequence_as(
-        self._datasets,
-        [ds.element_spec for ds in nest.flatten(self._datasets)])
-    self._name = name
-    variant_tensor = gen_dataset_ops.zip_dataset(
-        [ds._variant_tensor for ds in nest.flatten(self._datasets)],
-        **self._common_args)
-    super(ZipDataset, self).__init__(variant_tensor)
-
-  def _inputs(self):
-    return nest.flatten(self._datasets)
-
-  @property
-  def element_spec(self):
-    return self._structure
 
 
 class ConcatenateDataset(DatasetV2):

@@ -53,6 +53,15 @@ tf_proto_library(
     create_service = True,
 )
 
+# copybara:uncomment_begin(google-only)
+# py_proto_library(
+#     name = "coordination_service_py_pb2",
+#     api_version = 2,
+#     visibility = ["//visibility:public"],
+#     deps = [":coordination_service_proto"],
+# )
+# copybara:uncomment_end
+
 tf_proto_library(
     name = "distributed_runtime_payloads_proto",
     srcs = ["distributed_runtime_payloads.proto"],
@@ -66,6 +75,16 @@ tf_proto_library(
 )
 
 tf_proto_library(
+    name = "test_log_proto",
+    srcs = ["test_log.proto"],
+    make_default_target_header_only = True,
+    visibility = [
+        "//tensorflow/core:__subpackages__",
+        "//tensorflow/tsl/util:__pkg__",
+    ],
+)
+
+tf_proto_library(
     name = "protos_all",
     create_go_proto = False,
     make_default_target_header_only = True,
@@ -76,6 +95,7 @@ tf_proto_library(
         ":error_codes_proto_impl",
         ":histogram_proto",
         ":rpc_options_proto",
+        ":test_log_proto",
     ],
     visibility = ["//visibility:public"],
 )

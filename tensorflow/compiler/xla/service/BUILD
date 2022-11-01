@@ -512,21 +512,6 @@ tf_cc_test(
 
 cc_library(
     name = "hlo",
-    srcs = [
-        "dfs_hlo_visitor.cc",
-        "dynamic_parameter_binding.cc",
-        "hlo_computation.cc",
-        "hlo_input_output_alias_config.cc",
-        "hlo_instruction.cc",
-        "hlo_instructions.cc",
-        "hlo_module.cc",
-        "hlo_module_metadata.cc",
-        "hlo_op_metadata.cc",
-        "hlo_opcode.cc",
-        "hlo_schedule.cc",
-        "hlo_sharding.cc",
-        "hlo_sharding_metadata.cc",
-    ],
     hdrs = [
         "dfs_hlo_visitor.h",
         "dfs_hlo_visitor_with_default.h",
@@ -567,6 +552,7 @@ cc_library(
         "//tensorflow/compiler/xla:util",
         "//tensorflow/compiler/xla:window_util",
         "//tensorflow/compiler/xla:xla_data_proto_cc",
+        "//tensorflow/compiler/xla/hlo/ir:hlo",
         "//tensorflow/tsl/lib/gtl:iterator_range",
         "//tensorflow/tsl/lib/gtl:map_util",
         "//tensorflow/tsl/platform:env",
@@ -581,6 +567,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/hash",
         "@com_google_absl//absl/memory",
         "@com_google_absl//absl/strings",
@@ -945,11 +932,10 @@ cc_library(
         "//tensorflow/compiler/xla:status_macros",
         "//tensorflow/compiler/xla:util",
         "//tensorflow/tsl/platform:errors",
-        "//tensorflow/tsl/platform:logging",
         "//tensorflow/tsl/platform:status",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
     ],
@@ -1229,6 +1215,47 @@ cc_library(
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:span",
+    ],
+)
+
+cc_library(
+    name = "latency_hiding_scheduler",
+    srcs = ["latency_hiding_scheduler.cc"],
+    hdrs = ["latency_hiding_scheduler.h"],
+    deps = [
+        ":hlo",
+        ":hlo_alias_analysis",
+        ":hlo_buffer",
+        ":hlo_cost_analysis",
+        ":hlo_dataflow_analysis",
+        ":hlo_pass",
+        ":hlo_reachability",
+        ":tuple_points_to_analysis",
+        "//tensorflow/compiler/xla:status",
+        "//tensorflow/compiler/xla:util",
+        "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:span",
+    ],
+)
+
+tf_cc_test(
+    name = "latency_hiding_scheduler_test",
+    srcs = ["latency_hiding_scheduler_test.cc"],
+    deps = [
+        ":async_collective_creator",
+        ":hlo",
+        ":latency_hiding_scheduler",
+        "//tensorflow/compiler/xla/tests:hlo_test_base",
+        "//tensorflow/compiler/xla/tests:xla_internal_test_main",
+        "//tensorflow/tsl/lib/core:status_test_util",
+        "@com_google_absl//absl/algorithm:container",
+        "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/container:flat_hash_set",
     ],
 )
 
@@ -1809,7 +1836,7 @@ cc_library(
         "//tensorflow/tsl/platform:status",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
     ],
@@ -2007,6 +2034,7 @@ cc_library(
     srcs = ["fusion_node_indexing_evaluation.cc"],
     hdrs = ["fusion_node_indexing_evaluation.h"],
     deps = [
+        ":elemental_ir_emitter",
         ":hlo",
         "//tensorflow/compiler/xla:types",
         "//tensorflow/tsl/platform:logging",
@@ -2645,6 +2673,7 @@ cc_library(
         "//tensorflow/tsl/platform:errors",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:function_ref",
     ],
 )
 
@@ -3771,6 +3800,7 @@ cc_library(
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings:str_format",
     ],
 )
@@ -4170,7 +4200,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:inlined_vector",
-        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:span",
     ],
@@ -4302,7 +4332,7 @@ cc_library(
         "//tensorflow/tsl/platform:logging",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
-        "@com_google_absl//absl/memory",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -4545,6 +4575,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/types:any",
     ],
@@ -4686,6 +4717,7 @@ cc_library(
         "//tensorflow/compiler/xla:debug_options_flags",
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:btree",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -4837,6 +4869,7 @@ cc_library(
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
         "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
     ],
@@ -5750,6 +5783,7 @@ cc_library(
         "@com_google_absl//absl/algorithm:container",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:inlined_vector",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -6039,6 +6073,7 @@ cc_library(
         "@com_google_absl//absl/base",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings",
         "@com_google_absl//absl/strings:str_format",
         "@com_google_absl//absl/types:span",
@@ -6474,6 +6509,7 @@ cc_library(
         "//tensorflow/compiler/xla:statusor",
         "//tensorflow/compiler/xla:util",
         "//tensorflow/tsl/platform:blocking_counter",
+        "@com_google_absl//absl/functional:function_ref",
     ],
 )
 
@@ -6682,6 +6718,7 @@ cc_library(
         "//tensorflow/tsl/platform:statusor",
         "@com_google_absl//absl/container:flat_hash_map",
         "@com_google_absl//absl/container:flat_hash_set",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/strings",
     ],
 )
@@ -6694,7 +6731,7 @@ tf_cc_test(
         "//tensorflow/compiler/xla:test",
         "//tensorflow/compiler/xla/tests:xla_internal_test_main",
         "//tensorflow/tsl/lib/core:status_test_util",
-        "//tensorflow/tsl/platform:test",
+        "@com_google_absl//absl/functional:bind_front",
     ],
 )
 
@@ -6705,6 +6742,7 @@ cc_library(
     deps = [
         "//tensorflow/tsl/platform:logging",
         "@com_google_absl//absl/container:flat_hash_map",
+        "@com_google_absl//absl/functional:function_ref",
         "@com_google_absl//absl/synchronization",
         "@com_google_absl//absl/time",
         "@com_google_absl//absl/types:span",
