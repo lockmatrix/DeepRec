@@ -315,7 +315,7 @@ Shape MakeTupleShapeImpl(absl::Span<ShapePtrOrRef> shapes) {
     PrimitiveType element_type, absl::Span<const int64_t> dimensions,
     absl::Span<const int64_t> minor_to_major,
     absl::Span<const DimLevelType> dim_level_types,
-    absl::Span<const bool> dim_ordered, absl::Span<const bool> dim_unique,
+    absl::Span<const bool> dim_unique, absl::Span<const bool> dim_ordered,
     PrimitiveType index_primitive_type, PrimitiveType pointer_primitive_type,
     int64_t memory_space, std::optional<Shape> physical_shape) {
   auto ret = MakeShapeWithLayoutInternal(
@@ -1702,18 +1702,34 @@ ShapeUtil::DeduceTransposeDimensionsForBitcast(const Shape& input_shape,
     absl::Span<const int64_t> count, absl::Span<const int64_t> incr,
     const ForEachParallelVisitorFunction& visitor_function) {
   // The parallel version of ForEachIndexInternal can never fail.
-  CHECK(ForEachIndexInternalParallel(shape, base, count, incr, visitor_function)
-            .ok());
+  CHECK(
+      ForEachIndexParallelWithStatus(shape, base, count, incr, visitor_function)
+          .ok());
+}
+
+/* static */ Status ShapeUtil::ForEachIndexParallelWithStatus(
+    const Shape& shape, absl::Span<const int64_t> base,
+    absl::Span<const int64_t> count, absl::Span<const int64_t> incr,
+    const ForEachParallelVisitorFunction& visitor_function) {
+  // The parallel version of ForEachIndexInternal can never fail.
+  return ForEachIndexInternalParallel(shape, base, count, incr,
+                                      visitor_function);
 }
 
 /* static */ void ShapeUtil::ForEachIndexParallel(
     const Shape& shape,
     const ForEachParallelVisitorFunction& visitor_function) {
+  CHECK(ForEachIndexParallelWithStatus(shape, visitor_function).ok());
+}
+
+/* static */ Status ShapeUtil::ForEachIndexParallelWithStatus(
+    const Shape& shape,
+    const ForEachParallelVisitorFunction& visitor_function) {
   std::vector<int64_t> base(shape.dimensions_size());
   std::vector<int64_t> incr(shape.dimensions_size(), 1);
-  return ForEachIndexParallel(shape, base,
-                              /*count=*/shape.dimensions(), incr,
-                              visitor_function);
+  return ForEachIndexParallelWithStatus(shape, base,
+                                        /*count=*/shape.dimensions(), incr,
+                                        visitor_function);
 }
 
 /* static */ Status ShapeUtil::ForEachIndexInternal(

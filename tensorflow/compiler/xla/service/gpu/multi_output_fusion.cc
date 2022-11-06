@@ -26,6 +26,7 @@ limitations under the License.
 #include "absl/container/flat_hash_set.h"
 #include "tensorflow/compiler/xla/debug_options_flags.h"
 #include "tensorflow/compiler/xla/service/gpu/gpu_fusible.h"
+#include "tensorflow/compiler/xla/service/gpu/gpu_performance_model.h"
 #include "tensorflow/compiler/xla/service/hlo_graph_dumper.h"
 #include "tensorflow/compiler/xla/service/hlo_instruction.h"
 #include "tensorflow/compiler/xla/service/hlo_opcode.h"
@@ -95,7 +96,8 @@ HloInstruction* SelectPreferredFusionCandidate(
 
 std::vector<HloInstruction*> GetProducerConsumerMultiOutputFusionCandidates(
     const HloInstruction* producer, const HloReachabilityMap& reachability,
-    FusionInfoCache* fusion_info_cache, GpuHloCostAnalysis* cost_analysis) {
+    FusionInfoCache* fusion_info_cache, GpuHloCostAnalysis* cost_analysis,
+    const GpuDeviceInfo& device_info) {
   std::vector<HloInstruction*> fusion_candidates;
   const HloComputation* computation = producer->parent();
   const HloModule* module = computation->parent();
@@ -171,6 +173,15 @@ std::vector<HloInstruction*> GetProducerConsumerMultiOutputFusionCandidates(
       dump_negative_explanation(FusionDecision{} << "if merged with "
                                                  << consumer->name()
                                                  << " will generate huge IR");
+      continue;
+    }
+
+    GpuPerformanceModel::RunTimes t = GpuPerformanceModel::EstimateRunTimes(
+        producer, cost_analysis, device_info, {consumer},
+        /*multi_output=*/true);
+    if (t.time_fused > t.time_unfused) {
+      dump_negative_explanation(FusionDecision{}
+                                << "will execute slower if fused");
       continue;
     }
 
@@ -306,7 +317,9 @@ bool GpuMultiOutputFusion::FuseSiblings(HloInstruction* parent,
 StatusOr<bool> GpuMultiOutputFusion::DoMultiOutputFusion() {
   bool changed = false;
   RecomputeReachability();
-  GpuHloCostAnalysis cost_analysis({shape_size_function_});
+  GpuHloCostAnalysis cost_analysis({shape_size_function_,
+                                    /*per_second_rates=*/{},
+                                    /*count_multiple_input_accesses=*/true});
   TF_RETURN_IF_ERROR(computation_->Accept(&cost_analysis));
   std::vector<HloInstruction*> defs_before_uses =
       computation_->MakeInstructionPostOrder();
@@ -335,7 +348,8 @@ StatusOr<bool> GpuMultiOutputFusion::DoMultiOutputFusion() {
     // multi-output fusion will occur before the current op in the order of
     // traversal, and hence, not get into the way of subsequent fusion attempts.
     const auto candidates = GetProducerConsumerMultiOutputFusionCandidates(
-        producer, *reachability_, &fusion_info_cache, &cost_analysis);
+        producer, *reachability_, &fusion_info_cache, &cost_analysis,
+        device_info_);
     auto* consumer_for_fusion = SelectPreferredFusionCandidate(candidates);
     if (consumer_for_fusion == nullptr) {
       continue;

@@ -360,8 +360,8 @@ class ShapeUtil {
       PrimitiveType element_type, absl::Span<const int64_t> dimensions,
       absl::Span<const int64_t> minor_to_major,
       absl::Span<const DimLevelType> dim_level_types,
-      absl::Span<const bool> dim_ordered = {},
       absl::Span<const bool> dim_unique = {},
+      absl::Span<const bool> dim_ordered = {},
       PrimitiveType index_primitive_type = PRIMITIVE_TYPE_INVALID,
       PrimitiveType pointer_primitive_type = PRIMITIVE_TYPE_INVALID,
       int64_t memory_space = 0,
@@ -702,9 +702,18 @@ class ShapeUtil {
       absl::Span<const int64_t> count, absl::Span<const int64_t> incr,
       const ForEachParallelVisitorFunction& visitor_function);
 
+  static Status ForEachIndexParallelWithStatus(
+      const Shape& shape, absl::Span<const int64_t> base,
+      absl::Span<const int64_t> count, absl::Span<const int64_t> incr,
+      const ForEachParallelVisitorFunction& visitor_function);
+
   // Convenience wrapper which doesn't take `base`, `count` and `incr`
   // explicitly, but iterates over every element in `shape` instead.
   static void ForEachIndexParallel(
+      const Shape& shape,
+      const ForEachParallelVisitorFunction& visitor_function);
+
+  static Status ForEachIndexParallelWithStatus(
       const Shape& shape,
       const ForEachParallelVisitorFunction& visitor_function);
 

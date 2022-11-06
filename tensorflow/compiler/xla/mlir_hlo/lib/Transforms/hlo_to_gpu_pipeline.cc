@@ -16,7 +16,7 @@ limitations under the License.
 /// This files contains a pipeline which converts HLO operations to GPU kernels
 /// written in a combination of LLVM and NVVM dialects.
 
-#include "mlir-hlo/Dialect/gml_st/transforms/passes.h"
+#include "gml_st/transforms/passes.h"
 #include "mlir-hlo/Dialect/mhlo/transforms/passes.h"
 #include "mlir-hlo/Transforms/gpu_passes.h"
 #include "mlir-hlo/Transforms/passes.h"
@@ -52,6 +52,7 @@ void mlir::createHloToGpuPipeline(OpPassManager& pm,
                                   bool experimentalSoftmax) {
   pm.addNestedPass<FuncOp>(hlo::createUnbufferizePass());
   pm.addNestedPass<FuncOp>(hlo::createInlineFusionPass());
+  pm.addPass(createCanonicalizerPass());  // Clean up get_tuple_element.
   pm.addPass(createCSEPass());  // Combine repeated subtract(broadcast).
 
   // HLO -> Linalg
@@ -110,7 +111,8 @@ void mlir::createHloToGpuPipeline(OpPassManager& pm,
   pm.addPass(createCanonicalizerPass());
 
   // Linalg + GmlSt -> GPU
-  pm.addNestedPass<FuncOp>(createGmlStToGpuPass());
+  pm.addNestedPass<FuncOp>(gml_st::createGmlStToGpuPass(
+      kBlockDistributionLabel, kWarpDistributionLabel));
   pm.addNestedPass<FuncOp>(gml_st::createGmlStToScfPass());
   pm.addNestedPass<FuncOp>(arith::createArithExpandOpsPass());
   pm.addNestedPass<FuncOp>(createConvertLinalgToLoopsPass());

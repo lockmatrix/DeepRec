@@ -33,6 +33,7 @@ filegroup(
 filegroup(
     name = "mobile_srcs_only_runtime",
     srcs = [
+        "connected_traceme.h",
         "context_types.h",
     ],
     visibility = ["//visibility:public"],
@@ -47,10 +48,10 @@ cc_library(
     ],
     deps = [
         ":profiler_interface",
-        "//tensorflow/core/profiler/protobuf:xplane_proto_cc",
         "//tensorflow/tsl/platform:errors",
         "//tensorflow/tsl/platform:logging",
         "//tensorflow/tsl/platform:status",
+        "//tensorflow/tsl/profiler/protobuf:xplane_proto_cc",
     ],
 )
 
@@ -83,8 +84,8 @@ cc_library(
     deps = [
         ":profiler_interface",
         "//tensorflow/core/profiler:profiler_options_proto_cc",
-        "//tensorflow/core/profiler/lib:profiler_controller",
         "//tensorflow/tsl/platform:mutex",
+        "//tensorflow/tsl/profiler/lib:profiler_controller",
     ],
     alwayslink = True,
 )
@@ -94,6 +95,7 @@ tf_cc_test(
     srcs = ["profiler_factory_test.cc"],
     deps = [
         ":profiler_factory",
+        ":profiler_factory_impl",
         ":profiler_interface",
         "//tensorflow/core:protos_all_cc",
         "//tensorflow/tsl/platform:macros",
@@ -222,5 +224,18 @@ tf_cc_test(
         "//tensorflow/tsl/platform:test_main",
         "//tensorflow/tsl/profiler/backends/cpu:annotation_stack",
         "@com_google_absl//absl/strings",
+    ],
+)
+
+cc_library(
+    name = "connected_traceme",
+    hdrs = ["connected_traceme.h"],
+    visibility = ["//visibility:public"],
+    deps = [
+        ":context_types_hdrs",
+        ":traceme",
+        ":traceme_encode",
+        "@com_google_absl//absl/strings",
+        "@com_google_absl//absl/types:optional",
     ],
 )
