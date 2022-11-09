@@ -3673,7 +3673,7 @@ struct SparseApplyAdam<CPUDevice, T, Tindex> {
                   typename TTypes<Tindex>::ConstVec indices, 
                   const int64 inner_dim) {
     const Tindex N = static_cast<Tindex>(indices.dimension(0));
-    if (N == 0) return Status::OK();
+    if (N == 0) return OkStatus();
     const Tindex first_dim_size = static_cast<Tindex>(var.dimension(0));
     const T beta1_power_scalar = beta1_power();
     const T beta2_power_scalar = beta2_power();
@@ -3744,7 +3744,7 @@ struct SparseApplyAdam<CPUDevice, T, Tindex> {
       d.parallelFor(N, cost, DoWork);
     }
 
-    return Status::OK();
+    return OkStatus();
   }
 };
 } // End of namespace functor
