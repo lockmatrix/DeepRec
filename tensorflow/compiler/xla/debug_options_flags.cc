@@ -42,6 +42,7 @@ DebugOptions DefaultDebugOptionsIgnoringFlags() {
   opts.set_xla_cpu_multi_thread_eigen(true);
   opts.set_xla_gpu_cuda_data_dir("./cuda_sdk_lib");
   opts.set_xla_gpu_asm_extra_flags("");
+  opts.set_xla_gpu_use_runtime_fusion(true);
   opts.set_xla_eliminate_hlo_implicit_broadcast(true);
   opts.set_xla_dump_hlo_as_html(false);
   opts.set_xla_dump_fusion_visualization(false);
@@ -73,6 +74,9 @@ DebugOptions DefaultDebugOptionsIgnoringFlags() {
   // TODO(b/241801928): Remove this flag and legacy cublas support once cublasLt
   // is fully supported
   opts.set_xla_gpu_enable_cublaslt(true);
+
+  // TODO(b/258036887): Remove this flag once CUDA Graphs are fully supported.
+  opts.set_xla_gpu_enable_cuda_graphs(false);
 
   // Despite the name, fast min/max on GPUs does not seem to be any faster, and
   // adds very counter-intuitive "NaN-swallowing" behavior.
@@ -658,6 +662,11 @@ static void AllocateFlags() {
       flag_values->xla_gpu_algorithm_denylist_path(),
       "An AlgorithmDenylist text proto file as a denylist of convolutions to "
       "avoid to use."));
+  flag_objects->push_back(
+      tsl::Flag("xla_gpu_use_runtime_fusion",
+                bool_setter_for(&DebugOptions::set_xla_gpu_use_runtime_fusion),
+                flag_values->xla_gpu_use_runtime_fusion(),
+                "For using cuDNN runtime compiled fusion kernels."));
   flag_objects->push_back(tsl::Flag(
       "xla_tpu_detect_nan",
       bool_setter_for(&DebugOptions::set_xla_tpu_detect_nan),
@@ -747,6 +756,11 @@ static void AllocateFlags() {
                 bool_setter_for(&DebugOptions::set_xla_gpu_enable_cublaslt),
                 flag_values->xla_gpu_enable_cublaslt(),
                 "Use cuBLASLt for GEMMs when possible."));
+  flag_objects->push_back(tsl::Flag(
+      "xla_gpu_enable_cuda_graphs",
+      bool_setter_for(&DebugOptions::set_xla_gpu_enable_cuda_graphs),
+      flag_values->xla_gpu_enable_cuda_graphs(),
+      "Use CUDA graphs to execute XLA GPU executables when possible."));
   flag_objects->push_back(
       tsl::Flag("xla_dump_disable_metadata",
                 bool_setter_for(&DebugOptions::set_xla_dump_disable_metadata),

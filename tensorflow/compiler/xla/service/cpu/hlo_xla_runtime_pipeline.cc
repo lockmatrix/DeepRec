@@ -46,9 +46,9 @@ limitations under the License.
 #include "tensorflow/compiler/xla/mlir/runtime/transforms/compiler.h"
 #include "tensorflow/compiler/xla/mlir_hlo/gml_st/interfaces/bufferizable_op_interface_impl.h"
 #include "tensorflow/compiler/xla/mlir_hlo/gml_st/transforms/passes.h"
-#include "tensorflow/compiler/xla/mlir_hlo/include/mlir-hlo/Dialect/mhlo/transforms/bufferizable_op_interface_impl.h"
-#include "tensorflow/compiler/xla/mlir_hlo/include/mlir-hlo/Dialect/mhlo/transforms/passes.h"
 #include "tensorflow/compiler/xla/mlir_hlo/include/mlir-hlo/Transforms/passes.h"
+#include "tensorflow/compiler/xla/mlir_hlo/mhlo/interfaces/bufferizable_op_interface_impl.h"
+#include "tensorflow/compiler/xla/mlir_hlo/mhlo/transforms/passes.h"
 #include "tensorflow/compiler/xla/status.h"
 #include "tensorflow/tsl/platform/errors.h"
 #include "tensorflow/tsl/platform/logging.h"
@@ -82,10 +82,10 @@ void AddSparsificationPasses(mlir::OpPassManager& pm) {
       mlir::bufferization::createEmptyTensorToAllocTensorPass());
   pm.addPass(mlir::bufferization::createTensorCopyInsertionPass(
       GetBufferizationOptions()));
-  pm.addPass(mlir::createDenseBufferizationPass(GetBufferizationOptions()));
   pm.addPass(mlir::createSparseTensorRewritePass());
   pm.addPass(mlir::createSparsificationPass());
   pm.addPass(mlir::createSparseTensorConversionPass());
+  pm.addPass(mlir::createDenseBufferizationPass(GetBufferizationOptions()));
   pm.addNestedPass<mlir::func::FuncOp>(
       mlir::bufferization::createFinalizingBufferizePass());
 }
@@ -183,11 +183,21 @@ static Status CreateHloXlaPipeline(
   pm.addNestedPass<mlir::func::FuncOp>(mlir::gml_st::createGmlStToScfPass());
   pm.addPass(mlir::createCSEPass());
   pm.addPass(mlir::createCanonicalizerPass());
-  pm.addPass(mlir::bufferization::createBufferResultsToOutParamsPass());
+  mlir::bufferization::BufferResultsToOutParamsOptions out_params_options;
+  out_params_options.filterFn = [](mlir::func::FuncOp* func) {
+    // Only transform the entry point.
+    return func->getSymName() == "main";
+  };
+  pm.addPass(mlir::bufferization::createBufferResultsToOutParamsPass(
+      out_params_options));
   if (options.outline_with_xla_framework) {
     pm.addPass(mlir::mhlo::CreateOutlineWithXLAFrameworkPass());
   }
   pm.addPass(mlir::createInlinerPass());
+  if (!options.sparse_bufferization) {
+    pm.addNestedPass<FuncOp>(
+        mlir::bufferization::createPromoteBuffersToStackPass(nullptr));
+  }
   pm.addNestedPass<mlir::func::FuncOp>(
       mlir::bufferization::createBufferDeallocationPass());
 
