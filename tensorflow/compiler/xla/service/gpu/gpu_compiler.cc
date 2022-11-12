@@ -18,6 +18,7 @@ limitations under the License.
 #include <stdlib.h>
 
 #include <algorithm>
+#include <any>
 #include <atomic>
 #include <functional>
 #include <iterator>
@@ -40,7 +41,6 @@ limitations under the License.
 #include "mlir/Dialect/Func/IR/FuncOps.h"  // from @llvm-project
 #include "mlir/IR/BuiltinOps.h"  // from @llvm-project
 #include "mlir/Pass/PassManager.h"  // from @llvm-project
-#include "tensorflow/compiler/mlir/xla/transforms/mhlo_to_lhlo_with_xla.h"
 #include "tensorflow/compiler/xla/hlo/ir/hlo_instruction.h"
 #include "tensorflow/compiler/xla/hlo/ir/hlo_instructions.h"
 #include "tensorflow/compiler/xla/hlo/transforms/hlo_constant_splitter.h"
@@ -155,6 +155,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/service/simplify_fp_conversions.h"
 #include "tensorflow/compiler/xla/service/slow_operation_alarm.h"
 #include "tensorflow/compiler/xla/service/sort_simplifier.h"
+#include "tensorflow/compiler/xla/service/spmd/collective_permute_motion.h"
 #include "tensorflow/compiler/xla/service/spmd/stateful_rng_spmd_partitioner.h"
 #include "tensorflow/compiler/xla/service/stable_sort_expander.h"
 #include "tensorflow/compiler/xla/service/stochastic_convert_decomposer.h"
@@ -170,6 +171,7 @@ limitations under the License.
 #include "tensorflow/compiler/xla/stream_executor/stream_executor.h"
 #include "tensorflow/compiler/xla/translate/hlo_to_mhlo/hlo_utils.h"
 #include "tensorflow/compiler/xla/translate/mhlo_to_hlo/location_exporter.h"
+#include "tensorflow/compiler/xla/translate/mhlo_to_lhlo_with_xla/mhlo_to_lhlo_with_xla.h"
 #include "tensorflow/compiler/xla/util.h"
 #include "tensorflow/tsl/platform/blocking_counter.h"
 #include "tensorflow/tsl/platform/casts.h"
@@ -382,6 +384,7 @@ Status GpuCompiler::OptimizeHloModule(
         hlo_module->config().allow_spmd_sharding_propagation_to_output());
     spmd_pipeline.AddPass<spmd::StatefulRngSpmdPartitioner>(
         num_partitions, hlo_module->config().replica_count());
+    spmd_pipeline.AddPass<CollectivePermuteMotion>();
     TF_RETURN_IF_ERROR(spmd_pipeline.Run(hlo_module).status());
   } else {
     HloPassPipeline sharding_removal_pipeline("sharding-removal");
@@ -540,15 +543,6 @@ Status GpuCompiler::OptimizeHloModule(
       pipeline.AddPass<ConvertMover>();
       pipeline.AddPass<AlgebraicSimplifier>(layout_insensitive_algsimp_opts);
     }();
-
-    // Run Softmax fusion after the simplification pipeline. This makes matching
-    // softmax easier, because redundant reshapes/broadcasts have already been
-    // removed. But we also want to run before layout assignment so that we can
-    // assure that the default layout will be used for the matched softmax
-    // fusion.
-    if (hlo_module->config().debug_options().xla_gpu_enable_softmax_fusion()) {
-      pipeline.AddPass<SoftmaxFusion>();
-    }
 
     // Run WhileLoopTripCountAnnotator at the end of the simplification
     // pipeline, before layout assignment and fusion.  This pass does some
@@ -776,6 +770,15 @@ Status GpuCompiler::OptimizeHloPostLayoutAssignment(
 
     pipeline.AddPass<ReductionDegenerateDimRemover>();
     pipeline.AddPass<ReductionLayoutNormalizer>();
+    // Run Softmax fusion after layout normalization. We expect a default layout
+    // in the softmax codegen pipeline. However we should run before
+    // ReductionDimensionGrouper, as that makes matching the softmax pattern
+    // harder.
+    if (hlo_module->config().debug_options().xla_gpu_enable_softmax_fusion()) {
+      pipeline.AddPass<HloPassFix<AlgebraicSimplifier>>(options);
+      pipeline.AddPass<SoftmaxFusion>();
+    }
+
     pipeline.AddPass<ReductionDimensionGrouper>();
     pipeline.AddPass<HloPassFix<ReductionSplitter>>();
     pipeline.AddPass<HloPassFix<GpuTreeReductionRewriter>>(
@@ -1403,7 +1406,7 @@ StatusOr<std::unique_ptr<Executable>> GpuCompiler::RunBackend(
     const CompileOptions& options) {
   VLOG(1) << "Starting to compile HLO module " << module->name();
   XLA_SCOPED_LOGGING_TIMER(
-      absl::StrCat("GpuCompiler::RunBackend for", module->name()));
+      absl::StrCat("GpuCompiler::RunBackend for ", module->name()));
   std::string slow_compilation_msg =
       absl::StrCat("Compiling module ", module->name());
   auto slow_compile_alarm = SlowCompilationAlarm(slow_compilation_msg);
@@ -1508,8 +1511,6 @@ StatusOr<std::vector<std::unique_ptr<AotCompilationResult>>>
 GpuCompiler::CompileAheadOfTime(std::unique_ptr<HloModuleGroup> module_group,
                                 const AotCompilationOptions& options) {
   CHECK(options.PlatformId() == se::cuda::kCudaPlatformId);
-  CHECK(options.executor() != nullptr);
-  auto stream_exec = options.executor();
 
   std::vector<std::unique_ptr<HloModule>> modules =
       module_group->ConsumeModules();
@@ -1517,17 +1518,33 @@ GpuCompiler::CompileAheadOfTime(std::unique_ptr<HloModuleGroup> module_group,
 
   for (const auto& module : modules) {
     llvm::LLVMContext llvm_context;
-    GpuDeviceInfo gpu_device_info = GetGpuDeviceInfo(stream_exec);
 
     // Compile the module
     CompileModuleResults compile_module_results;
-    TF_RETURN_IF_ERROR(CompileModuleToLlvmIrImpl(
-        module.get(), &llvm_context, target_triple_, data_layout_,
-        stream_exec->platform()->Name(), stream_exec->platform()->id(),
-        gpu_device_info,
-        stream_exec->GetDeviceDescription().cuda_compute_capability(),
-        stream_exec->GetDeviceDescription().rocm_compute_capability(),
-        GetCanShareBuffer(), pointer_size_, &compile_module_results));
+
+    const std::any& target_config = options.target_config();
+    auto* gpu_target_config = std::any_cast<GpuTargetConfig>(&target_config);
+    if (gpu_target_config) {
+      TF_RETURN_IF_ERROR(CompileModuleToLlvmIrImpl(
+          module.get(), &llvm_context, target_triple_, data_layout_,
+          gpu_target_config->platform_name, options.PlatformId(),
+          gpu_target_config->gpu_device_info,
+          gpu_target_config->cuda_compute_capability,
+          gpu_target_config->rocm_compute_capability, GetCanShareBuffer(),
+          pointer_size_, &compile_module_results));
+    } else {
+      CHECK(options.executor() != nullptr);
+      auto stream_exec = options.executor();
+      const stream_executor::DeviceDescription& device_description =
+          stream_exec->GetDeviceDescription();
+      TF_RETURN_IF_ERROR(CompileModuleToLlvmIrImpl(
+          module.get(), &llvm_context, target_triple_, data_layout_,
+          stream_exec->platform()->Name(), options.PlatformId(),
+          GetGpuDeviceInfo(stream_exec),
+          device_description.cuda_compute_capability(),
+          device_description.rocm_compute_capability(), GetCanShareBuffer(),
+          pointer_size_, &compile_module_results));
+    }
 
     if (user_pre_optimization_hook_) {
       user_pre_optimization_hook_(*compile_module_results.llvm_module);
@@ -1538,7 +1555,7 @@ GpuCompiler::CompileAheadOfTime(std::unique_ptr<HloModuleGroup> module_group,
         BackendCompileResult backend_result,
         CompileToTargetBinary(
             module->config(), std::move(compile_module_results.llvm_module),
-            stream_exec, {options.device_allocator()}, module.get()));
+            options.executor(), {options.device_allocator()}, module.get()));
 
     auto& compiled_executable = compile_module_results.executable;
 
@@ -1546,18 +1563,27 @@ GpuCompiler::CompileAheadOfTime(std::unique_ptr<HloModuleGroup> module_group,
       return InternalError("Gpu runtime program was not provided");
     }
 
+    // TODO(ezhulenev): Unify AOT compilation with GpuRuntimeExecutable::Create
+    // (see `gpu/runtime/executable.h`).
+
     const auto& program = std::get<OwnedGpuRuntimeProgram>(compiled_executable);
 
-    // Options for the default JitRt compilation pipeline.
+    // Options for the default XLA runtime compilation pipeline.
     runtime::CompilationPipelineOptions copts;
 
-    // Options for constructing JitRt JitExecutable.
+    // Populate mapping from XLA (SE) enums/structs type id to symbol names.
+    copts.populate_type_id_names = PopulateXlaGpuTypeIdNames;
+
+    // For passing LMHLO attributes as XLA (SE) enums/structs to custom calls.
+    copts.populate_attr_encodings = PopulateLmhloToXlaAttrEncoding;
+
+    // Options for constructing XLA runtime JitExecutable.
     runtime::JitExecutable::Options opts;
     opts.specialization = runtime::JitExecutable::Specialization::kDisabled;
     opts.compiler.register_dialects =
         runtime::RegisterDefaultXlaGpuRuntimeDialects;
 
-    // Register JitRt Gpu runtime custom calls with the linker.
+    // Register XLA Gpu runtime custom calls with the linker.
     opts.compiler.symbols_binding = runtime::ToSymbolsBinding(
         PopulateXlaGpuCustomCalls, PopulateXlaGpuTypeIdNames);
 
@@ -1576,18 +1602,17 @@ GpuCompiler::CompileAheadOfTime(std::unique_ptr<HloModuleGroup> module_group,
     // For static shapes we can always serialize only the default executable.
     runtime::Executable& executable = jit_executable->DefaultExecutable().get();
 
-    // Check if JitRt executable saved the compilation result.
+    // Check if XLA runtime executable saved the compilation result.
     std::unique_ptr<llvm::MemoryBuffer> obj_file = executable.obj_file();
     if (!obj_file)
-      return InternalError("JitRt executable didn't save the obj file");
+      return InternalError("XLA runtime executable didn't save the obj file");
 
     std::string data(obj_file->getBuffer().data(),
                      obj_file->getBuffer().size());
-    results.emplace_back(
-        std::make_unique<xla::gpu::GpuXlaRuntimeAotCompilationResult>(
-            module->ToProto(), data, program->module,
-            compile_module_results.entry_func_attrs, backend_result.first,
-            backend_result.second));
+    results.emplace_back(std::make_unique<GpuXlaRuntimeAotCompilationResult>(
+        module->ToProto(), data, program->module,
+        compile_module_results.entry_func_attrs, backend_result.first,
+        backend_result.second));
   }
   return std::move(results);
 }

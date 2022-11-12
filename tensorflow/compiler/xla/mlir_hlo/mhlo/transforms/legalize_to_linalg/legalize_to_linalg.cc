@@ -305,15 +305,15 @@ struct RngUniformConversion : public OpConversionPattern<mhlo::RngOp> {
 // Looks through a set of dimension that has been marked as reduction axes,
 // if it is found within the set, then we set it as "reduction", otherwise
 // we can label it as "parallel".
-SmallVector<StringRef, 3> getEinsumLoopsAttrs(
+SmallVector<utils::IteratorType, 3> getEinsumLoopsAttrs(
     const llvm::SmallSetVector<StringRef, 4>& inputInd,
     const llvm::SmallSetVector<StringRef, 4>& reductionDims) {
-  SmallVector<StringRef, 3> res;
+  SmallVector<utils::IteratorType, 3> res;
   for (StringRef dim : inputInd) {
     if (!reductionDims.contains(dim)) {
-      res.push_back(getParallelIteratorTypeName());
+      res.push_back(utils::IteratorType::parallel);
     } else {
-      res.push_back(getReductionIteratorTypeName());
+      res.push_back(utils::IteratorType::reduction);
     }
   }
   return res;
@@ -687,6 +687,31 @@ class BroadcastConverter
           AffineMap::get(nloops, /*symbolCount=*/0, inputDimExprs, context);
     }
     return {inputMap, b->getMultiDimIdentityMap(nloops)};
+  }
+};
+
+class BroadcastOpToBroadcastConverter
+    : public OpConversionPattern<mhlo::BroadcastOp> {
+  using OpConversionPattern<mhlo::BroadcastOp>::OpConversionPattern;
+
+  LogicalResult matchAndRewrite(
+      mhlo::BroadcastOp op, OpAdaptor adaptor,
+      ConversionPatternRewriter& rewriter) const override {
+    auto resultTy = typeConverter->convertType(op.getType()).cast<ShapedType>();
+
+    int64_t inputRank = op.getOperand().getType().getRank();
+    int64_t numPrependedDims = op.getBroadcastSizes().size();
+    SmallVector<int64_t> dimensions = llvm::to_vector(
+        llvm::seq<int64_t>(numPrependedDims, numPrependedDims + inputRank));
+
+    auto loc = op.getLoc();
+    Value emptyTensor =
+        getEmptyTensorFor(rewriter, loc, resultTy, op, adaptor.getOperands());
+
+    rewriter.replaceOpWithNewOp<linalg::BroadcastOp>(
+        op, op.getOperand(), emptyTensor, dimensions,
+        linalg::getPrunedAttributeList(op));
+    return success();
   }
 };
 
@@ -2372,10 +2397,10 @@ struct ConvolutionOpGeneralConversion
     // If batch or feature count groupings exist, represent this through
     // reshaping the input to have an additional dimension that these groupings
     // exist along, and reduce in that dimension
-    SmallVector<StringRef, 3> iterationLoops;
+    SmallVector<utils::IteratorType, 3> iterationLoops;
     if (featureGroupCount != 1) {
       auto parallelDim = mlir::getAffineDimExpr(nextDim++, ctx);
-      iterationLoops.push_back(getParallelIteratorTypeName());
+      iterationLoops.push_back(utils::IteratorType::parallel);
       // Reshape LHS
       {
         srcExprs.insert(srcExprs.begin() + inputFeatureDimension, parallelDim);
@@ -2417,7 +2442,7 @@ struct ConvolutionOpGeneralConversion
     }
 
     if (batchGroupCount != 1) {
-      iterationLoops.push_back(getParallelIteratorTypeName());
+      iterationLoops.push_back(utils::IteratorType::parallel);
       auto parallelDim = mlir::getAffineDimExpr(nextDim++, ctx);
       // Reshape LHS
       {
@@ -2461,7 +2486,7 @@ struct ConvolutionOpGeneralConversion
 
     // Handle input feature dimension
     {
-      iterationLoops.push_back(getReductionIteratorTypeName());
+      iterationLoops.push_back(utils::IteratorType::reduction);
       auto inputFeatureDim = mlir::getAffineDimExpr(nextDim++, ctx);
       srcExprs[lhsIndexMapping[inputFeatureDimension]] = inputFeatureDim;
       windowExprs[rhsIndexMapping[kernelInputFeatureDimension]] =
@@ -2470,7 +2495,7 @@ struct ConvolutionOpGeneralConversion
 
     // Handle output feature dimension
     {
-      iterationLoops.push_back(getParallelIteratorTypeName());
+      iterationLoops.push_back(utils::IteratorType::parallel);
       auto outputFeatureDim = mlir::getAffineDimExpr(nextDim++, ctx);
       dstExprs[resultIndexMapping[outputFeatureDimension]] = outputFeatureDim;
       windowExprs[rhsIndexMapping[kernelOutputFeatureDimension]] =
@@ -2480,8 +2505,8 @@ struct ConvolutionOpGeneralConversion
     // Handle spatial Dimensions
     int64_t numSpatialDims = rank - 2;
     for (int64_t i = 0; i < numSpatialDims; i++) {
-      iterationLoops.push_back(getParallelIteratorTypeName());
-      iterationLoops.push_back(getReductionIteratorTypeName());
+      iterationLoops.push_back(utils::IteratorType::parallel);
+      iterationLoops.push_back(utils::IteratorType::reduction);
       auto dim0 = mlir::getAffineDimExpr(nextDim++, ctx);
       auto dim1 = mlir::getAffineDimExpr(nextDim++, ctx);
 
@@ -2497,7 +2522,7 @@ struct ConvolutionOpGeneralConversion
 
     // Handle batch dimension
     {
-      iterationLoops.push_back(getParallelIteratorTypeName());
+      iterationLoops.push_back(utils::IteratorType::parallel);
       auto batchDim = mlir::getAffineDimExpr(nextDim++, ctx);
 
       srcExprs[lhsIndexMapping[inputBatchDimension]] = batchDim;
@@ -3729,7 +3754,7 @@ void populateHloToLinalgConversionPattern(MLIRContext* context,
   // clang-format off
   patterns->add<
       BitcastConvertConverter,
-      BroadcastConverter<mhlo::BroadcastOp>, ConcatenateConverter,
+      ConcatenateConverter,
       ConstConverterTensor, HloDynamicBroadcastInDimConverter,
       HloBroadcastInDimConverter, IotaConverter<mhlo::IotaOp>,
       EinsumToLinalgConverter,
@@ -3751,6 +3776,7 @@ void populateHloToLinalgConversionPattern(MLIRContext* context,
 
   if (enablePrimitiveOps) {
     patterns->add<
+      BroadcastOpToBroadcastConverter,
       MapOpToMapConverter,
       PointwiseToLinalgMapConverter<mhlo::AbsOp>,
       PointwiseToLinalgMapConverter<mhlo::AddOp>,
@@ -3804,6 +3830,7 @@ void populateHloToLinalgConversionPattern(MLIRContext* context,
     >(typeConverter, context);
   } else {
     patterns->add<
+      BroadcastConverter<mhlo::BroadcastOp>,
       MapOpToGenericConverter,
       PointwiseToLinalgConverter<mhlo::AbsOp>,
       PointwiseToLinalgConverter<mhlo::AddOp>,

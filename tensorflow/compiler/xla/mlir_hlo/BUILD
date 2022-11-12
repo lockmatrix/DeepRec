@@ -423,9 +423,12 @@ cc_library(
 
 cc_library(
     name = "convert_op_folder",
-    srcs = ["lib/utils/convert_op_folder.cc"],
-    hdrs = ["include/mlir-hlo/utils/convert_op_folder.h"],
-    includes = ["include"],
+    srcs = ["utils/convert_op_folder.cc"],
+    hdrs = ["utils/convert_op_folder.h"],
+    includes = [
+        ".",
+        "include",
+    ],
     deps = [
         "@llvm-project//llvm:Support",
         "@llvm-project//mlir:IR",
@@ -435,7 +438,6 @@ cc_library(
 cc_library(
     name = "mlir_hlo",
     srcs = [
-        "lib/utils/hlo_utils.cc",
         "mhlo/IR/hlo_ops.cc",
         "mhlo/IR/hlo_ops.cc.inc",
         "mhlo/IR/hlo_ops.h.inc",
@@ -446,11 +448,12 @@ cc_library(
         "mhlo/IR/hlo_ops_typedefs.cc.inc",
         "mhlo/IR/hlo_ops_typedefs.h.inc",
         "mhlo/IR/mhlo_bytecode.cc",
+        "utils/hlo_utils.cc",
     ],
     hdrs = [
-        "include/mlir-hlo/utils/hlo_utils.h",
         "mhlo/IR/hlo_ops.h",
         "mhlo/IR/mhlo_bytecode.h",
+        "utils/hlo_utils.h",
     ],
     includes = [
         ".",
@@ -496,9 +499,9 @@ cc_library(
     name = "lhlo",
     srcs = ["lhlo/IR/lhlo_ops.cc"],
     hdrs = [
-        "include/mlir-hlo/utils/lhlo_utils.h",
         "lhlo/IR/lhlo_ops.h",
         "lhlo/IR/lhlo_ops_structs.h",
+        "lhlo/utils/lhlo_utils.h",
     ],
     includes = [
         ".",
@@ -820,9 +823,12 @@ cc_library(
 
 cc_library(
     name = "codegen_utils",
-    srcs = ["lib/utils/codegen_utils.cc"],
-    hdrs = ["include/mlir-hlo/utils/codegen_utils.h"],
-    includes = ["include"],
+    srcs = ["utils/codegen_utils.cc"],
+    hdrs = ["utils/codegen_utils.h"],
+    includes = [
+        ".",
+        "include",
+    ],
     deps = [
         "@llvm-project//llvm:Support",
         "@llvm-project//mlir:ArithDialect",
@@ -836,8 +842,11 @@ cc_library(
 
 cc_library(
     name = "placement_utils",
-    hdrs = ["include/mlir-hlo/utils/placement_utils.h"],
-    includes = ["include"],
+    hdrs = ["utils/placement_utils.h"],
+    includes = [
+        ".",
+        "include",
+    ],
     deps = ["@llvm-project//llvm:Support"],
 )
 
@@ -1194,6 +1203,7 @@ cc_library(
         "@llvm-project//mlir:SCFToControlFlow",
         "@llvm-project//mlir:SCFTransforms",
         "@llvm-project//mlir:ShapeToStandard",
+        "@llvm-project//mlir:TensorInferTypeOpInterfaceImpl",
         "@llvm-project//mlir:Transforms",
         "@llvm-project//mlir:VectorToLLVM",
     ],
@@ -1313,6 +1323,7 @@ cc_library(
     name = "gml_st_passes",
     srcs = [
         "gml_st/transforms/collapse_materialize_ops/collapse_materialize_ops.cc",
+        "gml_st/transforms/collapse_shape/collapse_shape.cc",
         "gml_st/transforms/fusion/fusion.cc",
         "gml_st/transforms/gml_st_simtfy/gml_st_simtfy.cc",
         "gml_st/transforms/gml_st_to_gpu/gml_st_to_gpu.cc",
@@ -1378,6 +1389,7 @@ cc_library(
         "@llvm-project//mlir:ShapeTransforms",
         "@llvm-project//mlir:Support",
         "@llvm-project//mlir:TensorDialect",
+        "@llvm-project//mlir:TensorInferTypeOpInterfaceImpl",
         "@llvm-project//mlir:TensorTransforms",
         "@llvm-project//mlir:TensorUtils",
         "@llvm-project//mlir:TransformUtils",
