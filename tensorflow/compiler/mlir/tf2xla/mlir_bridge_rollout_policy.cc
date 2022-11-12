@@ -39,7 +39,7 @@ MlirBridgeRolloutPolicy GetMlirBridgeRolloutPolicy(
         }
     });
     if(force_enable) {
-        return MlirBridgeRolloutPolicy::kEnabledAfterGraphAnalysisSafeModeFallback;
+        return MlirBridgeRolloutPolicy::kEnabledAfterGraphAnalysis;
     }
 
     switch (GetMlirBridgeRolloutState(config_proto)) {
