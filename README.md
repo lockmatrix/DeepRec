@@ -1,3 +1,37 @@
+# DeepRec 的 Tensorflow 2.x移植版本
+
+## 定位
+
+总体来说，该版本只是一个移植的可行性和收益证明Demo，远不是DeepRec全功能的一个完整移植。
+
+同时本项目也是 [DeepRec的CPU版本优化大赛](https://tianchi.aliyun.com/competition/entrance/532005/introduction)
+的一个参赛方案，由于比赛只启用了部分CPU上的DeepRec基本功能，所以由于开发成本原因也只考虑了基本功能，并主要针对CPU训练场景。
+
+该Demo的目标：
+* 证明：在保持TF 1.x的API不变的情况下，迁移到TF 2.x的codebase，享受 2.x 的社区更新是可能的。
+* 确定除了DeepRec的主要功能性Feature外，目前基于1.15打磨的DeepRec codebase还有哪些明显优于TF 2.x master的修改点。
+* 由于在参赛时DeepRec项目本身的GCC依赖版本较老，也计划在这方面确定移植到最新GCC的可能性。（该部分已经纳入到DeepRec的master）
+
+结论：
+* 是可行的，仅通过将TF的编译API改成1.x版本，并在TF 2.x上增加用户需要的原1.x的API就可以实现，且成本相对可控。
+* TF 2.x的除了API外的全功能Feature正常，包括XLA。
+* 移植到TF 2.x后，对于比赛评估的所有常见模型，平均在CPU上有大约 1/6 的训练时间降低收益（在对其GCC版本、编译参数、影响大的定制算子之后）。
+* 目前开启XLA对wall time没有收益，但可以实现降低对CPU的占用（在某些XLA配置参数下）。可以期待后续社区更新。
+* DeepRec除了自身定制功能外，领先TF master的只有少数修改，可以考虑直接贡献给TF master。（虽然这可能是DeepRec项目组不愿做的）
+    * 主要是 AdamOptimizer 的 SparseApplyAdam 算子
+
+## 项目代码阅读的一些说明
+
+基于TF使用2.12 nightly版本，但实际上从2.10-2.12都没有太大差别，这三个版本间的移植工作量很小。
+
+比赛的测试环境模拟了一个老旧的用户版本的场景：GCC 7.5、Python 3.6、其他依赖库都锚定于 TF 1.15。
+本Demo实现了在不修改用户环境下对这些因素的支持：
+* 针对GCC的更新：在wheel包内加载新的libstdc++.so.6，并在import时抢先载入
+* 针对Python 3.6：TF 2.x的代码可以在少量修改下支持基于Python 3.6上编译。
+* 其他依赖库：可以打包在同一个wheel包内，不必依赖用户更新依赖库。
+
+
+
 <div align="center">
   <img src="https://www.tensorflow.org/images/tf_logo_horizontal.png">
 </div>
